@@ -24,3 +24,6 @@ def index():
 def dashboard():
         return render_template('dashboard.html')
 
+@main_routes.route('/plantilla-datatable')
+def plantilla():
+        return render_template('plantilla-datatable.html')
