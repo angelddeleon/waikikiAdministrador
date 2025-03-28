@@ -8,10 +8,8 @@ class User(db.Model):
 
     id_usuario = db.Column(db.Integer, primary_key=True)  # ID del usuario
     tipo_usuario = db.Column(db.String(50), nullable=False)  # Tipo de usuario (admin, empleado, etc.)
-    estado = db.Column(db.String(20), nullable=False)  # Estado del usuario (activo, inactivo)
     correo_usuario = db.Column(db.String(120), unique=True, nullable=False)  # Correo del usuario
     nombre = db.Column(db.String(100), nullable=False)  # Nombre del usuario
-    apellidos = db.Column(db.String(100), nullable=False)  # Apellidos del usuario
     contrasena = db.Column(db.String(200), nullable=False)  # Contraseña del usuario (hasheada)
 
     def __repr__(self):

@@ -22,15 +22,5 @@ def index():
 
 @main_routes.route('/dashboard')
 def dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('main.login'))  # Redirige al login si no hay usuario en sesión
-    
-    user_id = session['user_id']
-    user = User.query.get(user_id)  # Obtener el usuario desde la base de datos
-
-    if user:
-        return render_template('dashboard.html', user=user)  # Muestra el dashboard con la información del usuario
-    else:
-        flash('Usuario no encontrado', 'danger')
-        return redirect(url_for('main.login'))
+        return render_template('dashboard.html')
 
