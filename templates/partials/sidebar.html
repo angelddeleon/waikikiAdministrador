@@ -1,0 +1,70 @@
+<!--wrapper-->
+<div class="wrapper">
+    <!--sidebar wrapper -->
+    <div class="sidebar-wrapper" data-simplebar="true">
+        <div class="sidebar-header">
+            <div>
+                <img src="{{ url_for('static', filename='imagenes/logo avilach frontend.png') }}" alt="logo" height="70px">
+            </div>
+            <div class="toggle-icon ms-auto" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-expanded="false">
+                <i class='bx bx-menu'></i>
+            </div>
+        </div>
+        <!--navigation-->
+        <ul class="metismenu collapse" id="sidebarMenu">
+            <li>
+                <a href="javascript:;" class="has-arrow">
+                    <div class="parent-icon"><i class='bx bx-home'></i></div>
+                    <div class="menu-title">Inmuebles</div>
+                </a>
+                <ul>
+                    <li> <a href=""><i class="bx bx-right-arrow-alt"></i>Crear Inmueble</a></li>
+            
+                </ul>
+            </li>
+            <li>
+                <a href="javascript:;" class="has-arrow">
+                    <div class="parent-icon"><i class='bx bx-group'></i></div>
+                    <div class="menu-title">Clientes</div>
+                </a>
+                <ul>
+                    <li> <a href="app-emailbox.html"><i class="bx bx-right-arrow-alt"></i>Crear Cliente</a></li>
+                    <li> <a href="app-chat-box.html"><i class="bx bx-right-arrow-alt"></i>Lista de Cliente</a></li>
+                    <li> <a href="app-chat-box.html"><i class="bx bx-right-arrow-alt"></i>Mis clientes</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="javascript:;" class="has-arrow">
+                    <div class="parent-icon"><i class='bx bx-calendar-week'></i></div>
+                    <div class="menu-title">Usuarios</div>
+                </a>
+                <ul>
+                    <li> <a href="app-emailbox.html"><i class="bx bx-right-arrow-alt"></i>Lista de Usuarios</a></li>
+                    <li> <a href="app-chat-box.html"><i class="bx bx-right-arrow-alt"></i>Salir</a></li>
+                </ul>
+            </li>
+            
+            
+        </ul>
+        <!--end navigation-->
+    </div>
+    <!--end sidebar wrapper -->
+
+    <!--start header -->
+    <header>
+        <div class="topbar d-flex align-items-center bg-dark shadow-none border-light-2 border-bottom">
+            <nav class="navbar navbar-expand">
+                <div class="mobile-toggle-menu text-white me-3" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-expanded="false"><i class='bx bx-menu'></i></div>
+                <div class="search-bar flex-grow-1">
+                    <div class="position-relative search-bar-box">
+                        <form>
+                            <input type="text" class="form-control search-control" autofocus placeholder="Type to search...">
+                        </form>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+    <!--end header -->
+</div>
+<!--end wrapper-->
