@@ -1,6 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, Blueprint, jsonify
 from models import db, Usuario, Pago, Reservacion, Horario, Cancha
 from datetime import datetime
+import requests
 
 main_routes = Blueprint('main', __name__)
 
@@ -46,8 +47,21 @@ def update_reservation_status(reservacion_id):
 
 @main_routes.route('/pagos')
 def pagos():
-    pagos = Pago.query.all()  # Obtiene todos los pagos
-    return render_template('pagos-datatable.html', pagos=pagos)
+    try:
+        # Obtener todos los pagos de la base de datos
+        pagos = Pago.query.all()  # Obtiene todos los pagos registrados en la base de datos
+
+        # Si no hay pagos, se puede mostrar un mensaje
+        if not pagos:
+            flash('No hay pagos registrados', 'warning')
+        
+        # Pasa los pagos al template
+        return render_template('pagos-datatable.html', pagos=pagos)
+    
+    except Exception as e:
+        flash(f'Error al obtener los pagos: {str(e)}', 'danger')
+        return render_template('pagos-datatable.html', pagos=[])
+
 
 @main_routes.route('/crear-reserva', methods=['GET', 'POST'])
 def crear_reservacion():
