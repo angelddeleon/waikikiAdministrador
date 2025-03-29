@@ -4,7 +4,7 @@
     <div class="sidebar-wrapper" data-simplebar="true">
         <div class="sidebar-header">
             <div>
-                <img src="{{ url_for('static', filename='imagenes/logo avilach frontend.png') }}" alt="logo" height="70px">
+                <img src="{{ url_for('static', filename='assets/imagenes/logo1.png') }}" alt="logo" height="40px" padding="20px">
             </div>
             <div class="toggle-icon ms-auto" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-expanded="false">
                 <i class='bx bx-menu'></i>
@@ -14,32 +14,41 @@
         <ul class="metismenu collapse" id="sidebarMenu">
             <li>
                 <a href="javascript:;" class="has-arrow">
-                    <div class="parent-icon"><i class='bx bx-home'></i></div>
-                    <div class="menu-title">Inmuebles</div>
-                </a>
-                <ul>
-                    <li> <a href=""><i class="bx bx-right-arrow-alt"></i>Crear Inmueble</a></li>
-            
-                </ul>
-            </li>
-            <li>
-                <a href="javascript:;" class="has-arrow">
-                    <div class="parent-icon"><i class='bx bx-group'></i></div>
-                    <div class="menu-title">Clientes</div>
-                </a>
-                <ul>
-                    <li> <a href="app-emailbox.html"><i class="bx bx-right-arrow-alt"></i>Crear Cliente</a></li>
-                    <li> <a href="app-chat-box.html"><i class="bx bx-right-arrow-alt"></i>Lista de Cliente</a></li>
-                    <li> <a href="app-chat-box.html"><i class="bx bx-right-arrow-alt"></i>Mis clientes</a></li>
-                </ul>
-            </li>
-            <li>
-                <a href="javascript:;" class="has-arrow">
                     <div class="parent-icon"><i class='bx bx-calendar-week'></i></div>
+                    <div class="menu-title">Reservaciones</div>
+                </a>
+                <ul>
+                    <li> <a href="{{ url_for('main.crear_reservacion') }}"><i class="bx bx-right-arrow-alt"></i>Crear Reservacion</a></li>
+                    <li> <a href="{{ url_for('main.listaReservas') }}"><i class="bx bx-right-arrow-alt"></i>Lista Reservacion</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="javascript:;" class="has-arrow">
+                    <div class="parent-icon"><i class='bx bx-money'></i></div>
+                    <div class="menu-title">Pagos</div>
+                </a>
+                <ul>
+                    <li> <a href="{{ url_for('main.pagos') }}"><i class="bx bx-right-arrow-alt"></i>Lista Pagos</a></li>            
+                </ul>
+            </li>
+
+            <li>
+                <a href="javascript:;" class="has-arrow">
+                    <div class="parent-icon"><i class='bx bx-user'></i></div>
                     <div class="menu-title">Usuarios</div>
                 </a>
                 <ul>
-                    <li> <a href="app-emailbox.html"><i class="bx bx-right-arrow-alt"></i>Lista de Usuarios</a></li>
+                    <li> <a href="{{ url_for('main.listaUsuarios') }}"><i class="bx bx-right-arrow-alt"></i>Lista de Usuarios</a></li>
+
+                </ul>
+            </li>
+
+            <li>
+                <a href="javascript:;" class="has-arrow">
+                    <div class="parent-icon"><i class='bx bx-cog'></i></div>
+                    <div class="menu-title">Configuracion</div>
+                </a>
+                <ul>
                     <li> <a href="app-chat-box.html"><i class="bx bx-right-arrow-alt"></i>Salir</a></li>
                 </ul>
             </li>

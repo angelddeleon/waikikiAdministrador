@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='assets/images/favicon-32x32.png') }}" type="image/png" />
+    <!-- Plugins and Bootstrap CSS -->
+    <link href="{{ url_for('static', filename='assets/plugins/simplebar/css/simplebar.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='assets/plugins/metismenu/css/metisMenu.min.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='assets/plugins/datatable/css/dataTables.bootstrap5.min.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='assets/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='assets/css/bootstrap-extended.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link href="{{ url_for('static', filename='assets/css/app.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='assets/css/icons.css') }}" rel="stylesheet">
+    <title>Waikiki</title>
+</head>
+
+<body>
+
+    {% include 'partials/sidebar.html' %}
+    <div class="page-wrapper">
+        <div class="page-content">
+            <h1>Reservaciones</h1>
+
+            <!-- Tabla de Reservaciones -->
+            <table id="example2" class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th>ID Reserva</th>
+                        <th>Nombre Usuario</th>
+                        <th>Teléfono</th>
+                        <th>Fecha</th>
+                        <th>Hora Inicio</th>
+                        <th>Hora Fin</th>
+                        <th>ID Pago</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservacion in reservas %}
+                        <tr>
+                            <td>{{ reservacion.id }}</td>
+                            <td>{{ reservacion.usuario.nombre }}</td>
+                            <td>{{ reservacion.usuario.telefono }}</td>
+                            <td>{{ reservacion.horario.date }}</td>
+                            <td>{{ reservacion.start_time_formatted }}</td>
+                            <td>{{ reservacion.end_time_formatted }}</td>
+                            <td>
+                                {% if reservacion.pagos %}
+                                    {{ reservacion.pagos[0].id }}  <!-- Suponiendo que una reservación tiene un solo pago -->
+                                {% else %}
+                                    No pagado
+                                {% endif %}
+                            </td>
+                            <td>{{ reservacion.status }}</td>
+                            <td>
+                                <!-- Formulario para cambiar el estado de la reservación -->
+                                <form action="{{ url_for('main.update_reservation_status', reservacion_id=reservacion.id) }}" method="POST">
+                                    <select name="status" class="form-select">
+                                        <option value="pendiente" {% if reservacion.status == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                                        <option value="confirmada" {% if reservacion.status == 'confirmada' %}selected{% endif %}>Confirmada</option>
+                                        <option value="cancelada" {% if reservacion.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                                        <option value="terminada" {% if reservacion.status == 'terminada' %}selected{% endif %}>Terminada</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-primary mt-2">Actualizar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- Plugins -->
+    <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/metismenu/js/metisMenu.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/datatable/js/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/datatable/js/dataTables.bootstrap5.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/js/app.js') }}"></script>
+</body>
+
+</html>
+ 

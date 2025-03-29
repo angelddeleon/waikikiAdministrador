@@ -6,7 +6,7 @@ class Config:
     
     # Configuración de la base de datos (MySQL)
     MYSQL_USER = 'root'
-    MYSQL_PASSWORD = ''
+    MYSQL_PASSWORD = '#Lo28de06'
     MYSQL_HOST = 'localhost'  # O la IP de tu servidor MySQL
     MYSQL_PORT = 3306  # El puerto por defecto de MySQL
     MYSQL_DB = 'waikiki'
