@@ -37,6 +37,7 @@
                         <th>Fecha</th>
                         <th>Hora Inicio</th>
                         <th>Hora Fin</th>
+                        <th>Cancha</th> <!-- Nueva columna para la cancha -->
                         <th>ID Pago</th>
                         <th>Estado</th>
                         <th>Acciones</th>
@@ -51,11 +52,12 @@
                             <td>{{ reservacion.horario.date }}</td>
                             <td>{{ reservacion.start_time_formatted }}</td>
                             <td>{{ reservacion.end_time_formatted }}</td>
+                            <td>{{ reservacion.horario.cancha.name }}</td> <!-- Mostrar el nombre de la cancha -->
                             <td>
                                 {% if reservacion.pagos %}
                                     {{ reservacion.pagos[0].id }}  <!-- Suponiendo que una reservación tiene un solo pago -->
                                 {% else %}
-                                    No pagado
+                                    0
                                 {% endif %}
                             </td>
                             <td>{{ reservacion.status }}</td>
@@ -91,4 +93,3 @@
 </body>
 
 </html>
- 

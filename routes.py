@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, Blueprint, jsonify
 from models import db, Usuario, Pago, Reservacion, Horario, Cancha
-from datetime import datetime
 import requests
+from datetime import datetime, time, timedelta
 
 main_routes = Blueprint('main', __name__)
 
@@ -62,64 +62,156 @@ def pagos():
         flash(f'Error al obtener los pagos: {str(e)}', 'danger')
         return render_template('pagos-datatable.html', pagos=[])
 
+@main_routes.route('/obtener_horas_disponibles', methods=['GET'])
+def obtener_horas_disponibles():
+    fecha = request.args.get('fecha')  # Fecha seleccionada
+    cancha_id = request.args.get('cancha_id')  # ID de la cancha seleccionada
+
+    # Verificar si la fecha se ha pasado correctamente
+    if not fecha:
+        flash('La fecha es obligatoria', 'danger')
+        return redirect(url_for('main.crear_reservacion'))
+
+    # Convertir la fecha de string a datetime usando el formato correcto
+    try:
+        fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")  # Cambiado a %Y-%m-%d
+    except ValueError:
+        flash('Formato de fecha incorrecto', 'danger')
+        return redirect(url_for('main.crear_reservacion'))
+
+    # Obtener la cancha y su precio
+    cancha = Cancha.query.get(cancha_id)
+
+    # Obtener los horarios ocupados para esa cancha y fecha
+    horarios_ocupados = db.session.query(Horario).filter_by(cancha_id=cancha_id, date=fecha_datetime.date(), estado='ocupado').all()
+
+    # Generar los horarios disponibles de 8:00 AM a 10:00 PM
+    horas_disponibles = []
+    for h in range(8, 22):  # De 8:00 AM a 10:00 PM
+        hora_inicio_obj = time(h, 0)  # Hora completa (ejemplo: 08:00)
+        hora_fin_obj = time(h + 1, 0)  # Hora de fin es una hora después (ejemplo: 09:00)
+
+        # Verificar si el horario está ocupado
+        horario_ocupado = any(horario.start_time == hora_inicio_obj for horario in horarios_ocupados)
+
+        if not horario_ocupado:
+            # Crear un diccionario con los datos requeridos para el frontend
+            start_time_formatted = hora_inicio_obj.strftime('%H:%M:%S')
+            start_time_display = hora_inicio_obj.strftime('%I:%M%p').lstrip("0").replace("AM", "AM").replace("PM", "PM")
+            horas_disponibles.append({
+                'start_time': start_time_formatted,
+                'start_time_display': start_time_display,
+                'end_time': hora_fin_obj.strftime('%H:%M:%S'),
+            })
+
+    return jsonify(horas_disponibles)
 
 @main_routes.route('/crear-reserva', methods=['GET', 'POST'])
 def crear_reservacion():
-    if request.method == 'POST':
-        # Obtener datos del formulario
-        cancha_id = request.form['cancha']
-        fecha = request.form['fecha']
-        hora_inicio = request.form['hora_inicio']
-        metodo_pago = request.form['metodo_pago']
-        comprobante = request.files['comprobante']
-
-        # Convertir la fecha y hora de inicio
-        fecha_datetime = datetime.strptime(f"{fecha} {hora_inicio}", "%Y-%m-%d %H:%M")
-
-        # Obtener la cancha y su precio
-        cancha = Cancha.query.get(cancha_id)
-        hora_fin = (fecha_datetime.hour + 1) % 24
-        hora_fin_str = f"{hora_fin:02}:00"
-        
-        # Crear el horario de la reservación
-        horario = Horario(
-            cancha_id=cancha_id,
-            date=fecha_datetime.date(),
-            start_time=fecha_datetime.time(),
-            end_time=hora_fin_str
-        )
-        db.session.add(horario)
-        db.session.commit()
-
-        # Crear la reservación
-        user_id = 1  # Aquí debes obtener el id del usuario actual
-        reservacion = Reservacion(user_id=user_id, horario_id=horario.id)
-        db.session.add(reservacion)
-        db.session.commit()
-
-        # Procesar el pago
-        pago = Pago(
-            user_id=user_id,
-            reserva_id=reservacion.id,
-            amount=cancha.price_per_hour,
-            payment_method=metodo_pago,
-            payment_proof=comprobante.filename,
-            payment_status='pendiente'
-        )
-        db.session.add(pago)
-        db.session.commit()
-
-        # Guardar el comprobante de pago
-        if comprobante:
-            comprobante.save(os.path.join('uploads', comprobante.filename))
-
-        return redirect(url_for('reservaciones'))
-
-    # Obtener todas las canchas disponibles
-    canchas = Cancha.query.all()
+    horas_disponibles = []  # Inicializamos la variable horas_disponibles
+    canchas = Cancha.query.all()  # Asegúrate de obtener todas las canchas de la base de datos
     current_date = datetime.today().date()
 
-    return render_template('crear_reserva.html', canchas=canchas, current_date=current_date)
+    if request.method == 'POST':
+        # Obtener datos del formulario
+        cancha_id = request.form.get('cancha')
+        if not cancha_id:
+            flash('Por favor, selecciona una cancha', 'danger')
+            return redirect(url_for('main.crear_reservacion'))  # Aquí ya hay un return si la cancha no está seleccionada
+
+        fecha = request.form.get('fecha')
+        hora_inicio = request.form.get('hora_inicio')
+        metodo_pago = request.form.get('metodo_pago')
+        comprobante = request.files.get('comprobante')  # El archivo puede ser opcional
+
+        # Obtener la cancha por ID
+        cancha = Cancha.query.get(cancha_id)
+
+        if not cancha:
+            flash('La cancha seleccionada no existe.', 'danger')
+            return redirect(url_for('main.crear_reservacion'))  # Aquí también hay un return si la cancha no existe
+
+        # Convertir la fecha y hora de inicio a datetime
+        hora_inicio = datetime.strptime(hora_inicio, "%H:%M:%S").time()
+        hora_fin_obj = (datetime.combine(datetime.today(), hora_inicio) + timedelta(hours=1)).time()  # Sumar una hora
+        
+        # Convertir la fecha en formato año-mes-día
+        fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")  # Cambiado a "%Y-%m-%d"
+
+        # Intentar subir el archivo a Node.js primero
+        payment_proof = None
+        if metodo_pago in ['pago movil', 'zelle'] and comprobante:
+            try:
+                # Guardamos el archivo localmente de forma temporal antes de enviarlo al servidor Node.js
+                filename = secure_filename(comprobante.filename)
+                filepath = os.path.join('uploads', filename)
+                comprobante.save(filepath)
+
+                # Abrimos el archivo y lo enviamos al servidor Node.js
+                with open(filepath, 'rb') as file:
+                    # Enviar la imagen a la ruta de Node.js
+                    url = 'http://localhost:3000/api/reservas/ImageCom'  # Ruta del servidor Node.js
+                    files = {'file': (filename, file)}
+                    response = requests.post(url, files=files)
+
+                    # Si la respuesta del servidor Node.js es exitosa, obtenemos el nombre de la imagen
+                    if response.status_code == 200:
+                        # Suponemos que el servidor Node.js devuelve el nombre de la imagen
+                        payment_proof = response.json().get('filename')
+                    else:
+                        flash(f'Error al subir el comprobante: {response.text}', 'danger')
+                        return redirect(url_for('main.crear_reservacion'))  # Aquí hay un return si no se sube el archivo
+
+                # Eliminar el archivo temporal si todo fue bien
+                os.remove(filepath)
+
+            except Exception as e:
+                flash(f'Error al guardar el comprobante: {str(e)}', 'danger')
+                return redirect(url_for('main.crear_reservacion'))  # Aquí también aseguramos un return en caso de error
+
+        # Solo creamos la reservación y el pago si el comprobante fue subido con éxito
+        try:
+            # Crear la reservación con el primer horario disponible
+            horario = Horario(
+                cancha_id=cancha_id,
+                date=fecha_datetime,  # Fecha en formato %Y-%m-%d
+                start_time=hora_inicio,
+                end_time=hora_fin_obj.strftime('%H:%M:%S'),  # Almacenamos hora de fin en formato HH:MM:SS
+                estado='ocupado'
+            )
+
+            db.session.add(horario)
+            db.session.commit()
+
+            # Crear la reservación con el horario asignado
+            user_id = 1  # Establecer el ID del usuario que está haciendo la reservación
+            reservacion = Reservacion(user_id=user_id, horario_id=horario.id)  # Toma el primer horario disponible
+            db.session.add(reservacion)
+            db.session.commit()
+
+            # Procesar el pago
+            pago = Pago(
+                user_id=user_id,
+                reserva_id=reservacion.id,
+                amount=cancha.price_per_hour,  # Accede correctamente al precio por hora de la cancha
+                payment_method=metodo_pago,
+                payment_status='pendiente',
+                payment_proof=payment_proof  # Asignamos el comprobante si se subió
+            )
+            db.session.add(pago)
+            db.session.commit()
+
+            flash('Reservación creada con éxito', 'success')
+            return redirect(url_for('main.listaReservas'))  # Asegúrate de que hay un return aquí
+
+        except Exception as e:
+            db.session.rollback()  # Revertimos cualquier cambio si ocurre un error
+            flash(f'Error al crear la reservación: {str(e)}', 'danger')
+            return redirect(url_for('main.crear_reservacion'))  # Siempre tener un return en el caso de un error
+
+    # Si la solicitud es GET, generar los horarios disponibles
+    return render_template('crear-reserva.html', canchas=canchas, current_date=current_date, horas_disponibles=horas_disponibles)  # Asegúrate de que haya un return aquí
+
 
 @main_routes.route('/usuarios')
 def listaUsuarios():

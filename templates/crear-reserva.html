@@ -1,11 +1,22 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
+    <!-- Required meta tags -->
+    <meta charset="utf-8"> 
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='assets/images/favicon-32x32.png') }}" type="image/png" />
+    <!-- Plugins and Bootstrap CSS -->
+    <link href="{{ url_for('static', filename='assets/plugins/simplebar/css/simplebar.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/css/perfect-scrollbar.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='assets/plugins/metismenu/css/metisMenu.min.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='assets/plugins/datatable/css/dataTables.bootstrap5.min.css') }}" rel="stylesheet" />
     <link href="{{ url_for('static', filename='assets/css/bootstrap.min.css') }}" rel="stylesheet">
-    <title>Crear Reservación</title>
+    <link href="{{ url_for('static', filename='assets/css/bootstrap-extended.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link href="{{ url_for('static', filename='assets/css/app.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='assets/css/icons.css') }}" rel="stylesheet">
+    <title>Waikiki</title>
 </head>
 
 <body>
@@ -13,9 +24,9 @@
     {% include 'partials/sidebar.html' %}
     <div class="page-wrapper">
         <div class="page-content">
-            <h1>Crear Reservación</h1>
+            <h1>Crear Reservacion</h1>
 
-            <form method="POST" action="{{ url_for('crear_reservacion') }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ url_for('main.crear_reservacion') }}" enctype="multipart/form-data">
                 <!-- Selección de cancha -->
                 <div class="form-group">
                     <label for="cancha">Seleccionar Cancha</label>
@@ -25,25 +36,32 @@
                         {% endfor %}
                     </select>
                 </div>
-
+            
                 <!-- Selección de fecha -->
                 <div class="form-group">
                     <label for="fecha">Seleccionar Fecha</label>
-                    <input type="date" id="fecha" name="fecha" class="form-control" min="{{ current_date }}" required>
+                    <input type="date" id="fecha" name="fecha" class="form-control" min="{{ current_date }}" value="{{ current_date }}" required>
                 </div>
-
-                <!-- Selección de hora de inicio -->
+            
                 <div class="form-group">
                     <label for="hora_inicio">Hora de Inicio</label>
-                    <input type="time" id="hora_inicio" name="hora_inicio" class="form-control" required>
+                    <select id="hora_inicio" name="hora_inicio" class="form-control" required>
+                        <!-- Los horarios disponibles se agregan aquí dinámicamente -->
+                    </select>
                 </div>
-
+            
                 <!-- Hora de fin (deshabilitada) -->
                 <div class="form-group">
                     <label for="hora_fin">Hora de Fin</label>
                     <input type="time" id="hora_fin" name="hora_fin" class="form-control" disabled>
                 </div>
-
+            
+                <!-- Monto (calculado automáticamente) -->
+                <div class="form-group">
+                    <label for="monto">Monto</label>
+                    <input type="text" id="monto" name="monto" class="form-control" disabled>
+                </div>
+            
                 <!-- Método de pago -->
                 <div class="form-group">
                     <label for="metodo_pago">Método de Pago</label>
@@ -53,38 +71,75 @@
                         <option value="zelle">Zelle</option>
                     </select>
                 </div>
-
-                <!-- Comprobante de pago -->
-                <div class="form-group">
+            
+                <!-- Comprobante de pago (solo si el método de pago es móvil o Zelle) -->
+                <div class="form-group" id="comprobante-container" style="display:none;">
                     <label for="comprobante">Comprobante de Pago</label>
                     <input type="file" id="comprobante" name="comprobante" class="form-control">
                 </div>
-
+            
                 <button type="submit" class="btn btn-primary">Reservar</button>
             </form>
+
         </div>
     </div>
 
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- Plugins -->
     <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/metismenu/js/metisMenu.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/datatable/js/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/plugins/datatable/js/dataTables.bootstrap5.min.js') }}"></script> 
+    <script src="{{ url_for('static', filename='assets/js/app.js') }}"></script>
     <script>
-        // Obtener los elementos del formulario
-        const fechaInput = document.getElementById("fecha");
-        const horaInicioInput = document.getElementById("hora_inicio");
-        const horaFinInput = document.getElementById("hora_fin");
+        $(document).ready(function() {
+    // Función para actualizar las horas disponibles cuando se cambian la fecha o la cancha
+    function actualizarHorasDisponibles() {
+        var fechaSeleccionada = $('#fecha').val();
+        var canchaSeleccionada = $('#cancha').val();
 
-        // Establecer la fecha mínima (hoy)
-        const today = new Date().toISOString().split('T')[0];
-        fechaInput.setAttribute('min', today);
+        // Hacer la solicitud AJAX
+        $.get('/obtener_horas_disponibles', { fecha: fechaSeleccionada, cancha_id: canchaSeleccionada }, function(data) {
+            var horaInicioSelect = $('#hora_inicio');
+            horaInicioSelect.empty();  // Limpiar las opciones anteriores
 
-        // Calcular la hora de fin cuando se seleccione la hora de inicio
-        horaInicioInput.addEventListener("change", function () {
-            const horaInicio = new Date(`1970-01-01T${horaInicioInput.value}:00`);
-            horaInicio.setHours(horaInicio.getHours() + 1); // Añadir una hora
-
-            // Mostrar la hora de fin
-            const horaFin = `${horaInicio.getHours().toString().padStart(2, '0')}:${horaInicio.getMinutes().toString().padStart(2, '0')}`;
-            horaFinInput.value = horaFin;
+            // Agregar las nuevas opciones de horarios disponibles
+            data.forEach(function(hora) {
+                // Mostrar en el frontend en formato 12 horas, pero usar el formato 24 horas para el valor
+                horaInicioSelect.append('<option value="' + hora.start_time + '">' + hora.start_time_display + '</option>');
+            });
         });
+    }
+
+    // Al cambiar la fecha o la cancha, actualizar las horas disponibles
+    $('#fecha, #cancha').change(function() {
+        actualizarHorasDisponibles();
+    });
+
+    // Inicializar las horas disponibles al cargar la página
+    actualizarHorasDisponibles();
+
+    // Mostrar campo de comprobante si el método de pago es móvil o Zelle
+    $('#metodo_pago').change(function() {
+        var metodo = $(this).val();
+        if (metodo == 'pago movil' || metodo == 'zelle') {
+            $('#comprobante-container').show();
+        } else {
+            $('#comprobante-container').hide();
+        }
+    });
+
+    // Calcular la hora de fin cuando se seleccione la hora de inicio
+    $('#hora_inicio').change(function() {
+        var horaInicio = $(this).val();
+        var hora = parseInt(horaInicio.split(":")[0]) + 1; // Sumar 1 hora
+        var minutos = horaInicio.split(":")[1];
+        var horaFin = (hora < 10 ? '0' : '') + hora + ":" + minutos;
+        $('#hora_fin').val(horaFin);
+    });
+});
     </script>
 </body>
 
