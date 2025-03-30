@@ -2,6 +2,8 @@ from flask import Flask, render_template, redirect, url_for, request, flash, Blu
 from models import db, Usuario, Pago, Reservacion, Horario, Cancha
 import requests
 from datetime import datetime, time, timedelta
+import os
+from werkzeug.utils import secure_filename
 
 main_routes = Blueprint('main', __name__)
 
@@ -122,7 +124,7 @@ def crear_reservacion():
         fecha = request.form.get('fecha')
         hora_inicio = request.form.get('hora_inicio')
         metodo_pago = request.form.get('metodo_pago')
-        comprobante = request.files.get('comprobante')  # El archivo puede ser opcional
+        comprobante = request.files.get('image')  # El archivo puede ser opcional
 
         # Obtener la cancha por ID
         cancha = Cancha.query.get(cancha_id)
@@ -142,6 +144,7 @@ def crear_reservacion():
         payment_proof = None
         if metodo_pago in ['pago movil', 'zelle'] and comprobante:
             try:
+                print("ARCHIVOOOO recibido:", comprobante)  # Depuración
                 # Guardamos el archivo localmente de forma temporal antes de enviarlo al servidor Node.js
                 filename = secure_filename(comprobante.filename)
                 filepath = os.path.join('uploads', filename)
@@ -151,7 +154,7 @@ def crear_reservacion():
                 with open(filepath, 'rb') as file:
                     # Enviar la imagen a la ruta de Node.js
                     url = 'http://localhost:3000/api/reservas/ImageCom'  # Ruta del servidor Node.js
-                    files = {'file': (filename, file)}
+                    files = {'image': (filename, file)}
                     response = requests.post(url, files=files)
 
                     # Si la respuesta del servidor Node.js es exitosa, obtenemos el nombre de la imagen
