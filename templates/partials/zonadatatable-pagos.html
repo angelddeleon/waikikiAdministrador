@@ -1,0 +1,63 @@
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="example2" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID Pago</th>
+                        <th>Usuario</th>
+                        <th>Reserva</th>
+                        <th>Monto</th>
+                        <th>Método de Pago</th>
+                        <th>Comprobante de Pago</th> <!-- Nueva columna -->
+                        <th>Estado del Pago</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pago in pagos %}
+                        <tr>
+                            <td>{{ pago.id }}</td>
+                            <td>{{ pago.usuario.nombre }}</td>
+                            <td>{{ pago.reservacion.id }}</td>
+                            <td>{{ pago.amount }}</td>
+                            <td>{{ pago.payment_method }}</td>
+                            <td>
+                                {% if pago.payment_proof == "Admin" %}
+                                    <p>Administrador</p>
+                                    {% elif pago.payment_proof is none %}
+                                    <p>El pago no tiene comprobante.</p>
+                                {% else %}
+                                    <img src="http://localhost:3000/uploads/comprobante/{{ pago.payment_proof }}" alt="Imagen del comprobante" style="width: 100px; height: auto;">
+                                {% endif %}
+                            </td>
+                            <td>{{ pago.payment_status }}</td>
+                            <td>
+                                <form action="{{ url_for('main.update_payment_status', pago_id=pago.id) }}" method="POST">
+                                    <select name="payment_status" class="form-select">
+                                        <option value="pendiente" {% if pago.payment_status == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                                        <option value="completado" {% if pago.payment_status == 'completado' %}selected{% endif %}>Completado</option>
+                                        <option value="rechazado" {% if pago.payment_status == 'rechazado' %}selected{% endif %}>Rechazado</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-primary mt-2">Actualizar</button>
+                                </form>
+                            </td>
+                            
+
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Name</th>
+                        <th>Position</th>
+                        <th>Office</th>
+                        <th>Age</th>
+                        <th>Start date</th>
+                        <th>Salary</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='assets/images/favicon-32x32.png') }}" type="image/png" />
+    <!-- Bootstrap and plugins -->
+    <link href="{{ url_for('static', filename='assets/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='assets/css/app.css') }}" rel="stylesheet">
+    <title>Crear Clase</title>
+</head>
+
+<body>
+
+    {% include 'partials/sidebar.html' %}
+
+    <div class="page-wrapper">
+        <div class="page-content">
+            <h1>Crear Clase</h1>
+
+            <form method="POST" action="{{ url_for('main.crear_clase') }}" enctype="multipart/form-data">
+                <!-- Nombre de la clase -->
+                <div class="form-group">
+                    <label for="nombre">Nombre Profesor</label>
+                    <input type="text" id="nombre" name="nombre" class="form-control" required>
+                </div>
+
+                <!-- Selección de cancha -->
+                <div class="form-group">
+                    <label for="cancha">Seleccionar Cancha</label>
+                    <select id="cancha" name="cancha" class="form-control" required>
+                        {% for cancha in canchas %}
+                            <option value="{{ cancha.id }}">{{ cancha.name }} - ${{ cancha.price_per_hour }} por hora</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Selección de fecha -->
+                <div class="form-group">
+                    <label for="fecha">Seleccionar Fecha</label>
+                    <input type="date" id="fecha" name="fecha" class="form-control" min="{{ current_date }}" value="{{ current_date }}" required>
+                </div>
+
+                <!-- Selección de hora -->
+                <div class="form-group">
+                    <label for="hora_inicio">Hora de Inicio</label>
+                    <select id="hora_inicio" name="hora_inicio" class="form-control" required>
+                        <!-- Los horarios disponibles se agregan aquí dinámicamente -->
+                    </select>
+                </div>
+
+                <!-- Hora de fin (deshabilitada) -->
+                <div class="form-group">
+                    <label for="hora_fin">Hora de Fin</label>
+                    <input type="time" id="hora_fin" name="hora_fin" class="form-control" disabled>
+                </div>
+
+                <!-- Estado de la clase -->
+                <div class="form-group">
+                    <label for="status">Estado</label>
+                    <select id="status" name="status" class="form-control" required>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="realizada">Realizada</option>
+                        <option value="cancelada">Cancelada</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary m-5">Crear Clase</button>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
+
+    <script>
+        $(document).ready(function() {
+            function actualizarHorasDisponibles() {
+                var fechaSeleccionada = $('#fecha').val();
+                var canchaSeleccionada = $('#cancha').val();
+
+                $.get('/obtener_horas_disponibles', { fecha: fechaSeleccionada, cancha_id: canchaSeleccionada }, function(data) {
+                    var horaInicioSelect = $('#hora_inicio');
+                    horaInicioSelect.empty();
+
+                    data.forEach(function(hora) {
+                        horaInicioSelect.append('<option value="' + hora.start_time + '">' + hora.start_time_display + '</option>');
+                    });
+                });
+            }
+
+            $('#fecha, #cancha').change(function() {
+                actualizarHorasDisponibles();
+            });
+
+            actualizarHorasDisponibles();
+
+            // Calcular la hora de fin cuando se seleccione la hora de inicio
+            $('#hora_inicio').change(function() {
+                var horaInicio = $(this).val();
+                var hora = parseInt(horaInicio.split(":")[0]) + 1; 
+                var minutos = horaInicio.split(":")[1];
+                var horaFin = (hora < 10 ? '0' : '') + hora + ":" + minutos;
+                $('#hora_fin').val(horaFin);
+            });
+        });
+    </script>
+</body>
+</html>

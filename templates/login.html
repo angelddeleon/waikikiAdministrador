@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waikiki</title>
+    <!-- Vincular Bootstrap desde CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Aseguramos que la imagen ocupe la mitad izquierda en pantallas grandes */
+        .login-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .login-container .image-section {
+            flex: 1;
+            background-image: url('https://via.placeholder.com/600x800'); /* Puedes cambiar esta URL por la de tu imagen */
+            background-size: cover;
+            background-position: center;
+        }
+
+        .login-container .form-section {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f8f9fa;
+        }
+
+        .login-container .form-section .login-form {
+            width: 80%;
+            max-width: 400px;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Aseguramos que el formulario se vea bien en móviles */
+        @media (max-width: 768px) {
+            .login-container {
+                flex-direction: column;
+            }
+
+            .login-container .image-section {
+                display: none;
+            }
+
+            .login-container .form-section {
+                width: 100%;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <!-- Sección de imagen -->
+
+          <img class="image-section" src="static/assets/imagenes/imagenPrincipal.webp" alt="">
+
+
+        <!-- Sección de formulario -->
+        <div class="form-section" style="background-color: white; display: flex; flex-direction: column;">
+            <img src="static/assets/imagenes/logo1.png" alt="" style="margin-bottom: 8px; height: 80px;">
+            <div class="login-form">
+                <h3 class="text-center mb-4">Iniciar Sesión</h3>
+                <form>
+                    <!-- Campo de correo electrónico -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Correo Electrónico (Gmail)</label>
+                        <input type="email" class="form-control" id="email" placeholder="Ingresa tu correo" required>
+                    </div>
+
+                    <!-- Campo de contraseña -->
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="password" placeholder="Ingresa tu contraseña" required>
+                    </div>
+
+                    <!-- Botón de inicio de sesión -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Iniciar sesión</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vincular los scripts de Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

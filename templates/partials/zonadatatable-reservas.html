@@ -1,0 +1,69 @@
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="example2" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID Reserva</th>
+                        <th>Nombre Usuario</th>
+                        <th>Teléfono</th>
+                        <th>Fecha</th>
+                        <th>Hora Inicio</th>
+                        <th>Hora Fin</th>
+                        <th>Cancha</th> <!-- Nueva columna para la cancha -->
+                        <th>ID Pago</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reservacion in reservas %}
+                        <tr>
+                            <td>{{ reservacion.id }}</td>
+                            <td>{{ reservacion.usuario.nombre }}</td>
+                            <td>{{ reservacion.usuario.telefono }}</td>
+                            <td>{{ reservacion.horario.date }}</td>
+                            <td>{{ reservacion.start_time_formatted }}</td>
+                            <td>{{ reservacion.end_time_formatted }}</td>
+                            <td>{{ reservacion.horario.cancha.name }}</td> <!-- Mostrar el nombre de la cancha -->
+                            <td>
+                                {% if reservacion.pagos %}
+                                    {{ reservacion.pagos[0].id }}  <!-- Suponiendo que una reservación tiene un solo pago -->
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </td>
+                            <td>{{ reservacion.status }}</td>
+                            <td>
+                                <!-- Formulario para cambiar el estado de la reservación -->
+                                <form action="{{ url_for('main.update_reservation_status', reservacion_id=reservacion.id) }}" method="POST">
+                                    <select name="status" class="form-select">
+                                        <option value="pendiente" {% if reservacion.status == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                                        <option value="confirmada" {% if reservacion.status == 'confirmada' %}selected{% endif %}>Confirmada</option>
+                                        <option value="cancelada" {% if reservacion.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                                        <option value="terminada" {% if reservacion.status == 'terminada' %}selected{% endif %}>Terminada</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-primary mt-2">Actualizar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>ID Reserva</th>
+                        <th>Nombre Usuario</th>
+                        <th>Teléfono</th>
+                        <th>Fecha</th>
+                        <th>Hora Inicio</th>
+                        <th>Hora Fin</th>
+                        <th>Cancha</th> <!-- Nueva columna para la cancha -->
+                        <th>ID Pago</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>

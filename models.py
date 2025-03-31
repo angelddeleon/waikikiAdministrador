@@ -90,3 +90,18 @@ class Pago(db.Model):
 
     def __repr__(self):
         return f"<Pago {self.id} - {self.amount} - {self.payment_status}>"
+
+class Clase(db.Model):
+    __tablename__ = 'clases'
+
+    # Definir las columnas de la tabla
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nombre = db.Column(db.String(255), nullable=False)  # Nombre del profesor
+    horario_id = db.Column(db.Integer, db.ForeignKey('horarios.id', ondelete='CASCADE'), nullable=False)
+    status = db.Column(db.Enum('pendiente', 'realizada', 'cancelada', name='status_enum'), default='pendiente')
+
+    # Relación con la tabla 'horarios'
+    horario = db.relationship('Horario', backref='clases', lazy=True)
+
+    def __repr__(self):
+        return f"<Clase {self.nombre}, Status: {self.status}>"

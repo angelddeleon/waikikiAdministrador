@@ -58,8 +58,8 @@
             
                 <!-- Monto (calculado automáticamente) -->
                 <div class="form-group">
-                    <label for="monto">Monto</label>
-                    <input type="text" id="monto" name="monto" class="form-control" disabled>
+                    <label for="monto">Monto ($)</label>
+                    <input type="number" id="monto" name="monto" class="form-control" >
                 </div>
             
                 <!-- Método de pago -->
@@ -70,12 +70,6 @@
                         <option value="pago movil">Pago Móvil</option>
                         <option value="zelle">Zelle</option>
                     </select>
-                </div>
-            
-                <!-- Comprobante de pago (solo si el método de pago es móvil o Zelle) -->
-                <div class="form-group" id="comprobante-container" style="display:none;">
-                    <label for="comprobante">Comprobante de Pago</label>
-                    <input type="file" id="comprobante" name="image" class="form-control">
                 </div>
             
                 <button type="submit" class="btn btn-primary m-5">Reservar</button>

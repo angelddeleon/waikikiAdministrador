@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, Blueprint, jsonify
-from models import db, Usuario, Pago, Reservacion, Horario, Cancha
+from models import db, Usuario, Pago, Reservacion, Horario, Cancha, Clase
 import requests
 from datetime import datetime, time, timedelta
 import os
@@ -46,6 +46,25 @@ def update_reservation_status(reservacion_id):
         flash('Reservación no encontrada', 'danger')
 
     return redirect(url_for('main.listaReservas'))
+
+@main_routes.route('/clases')
+def clases():
+    try:
+        # Obtener todas las clases de la base de datos, incluyendo sus horarios y canchas
+        clases = Clase.query.join(Horario).join(Cancha).all()  # Asegurándote de hacer el join correctamente
+
+        print(f"Clases recuperadas: {clases}")  # Para depuración
+
+        if not clases:
+            flash('No hay clases registradas', 'warning')
+
+        # Pasa las clases al template
+        return render_template('clases-datatable.html', clases=clases)
+    
+    except Exception as e:
+        flash(f'Error al obtener las clases: {str(e)}', 'danger')
+        return render_template('clases-datatable.html', clases=[])
+
 
 @main_routes.route('/pagos')
 def pagos():
@@ -124,7 +143,8 @@ def crear_reservacion():
         fecha = request.form.get('fecha')
         hora_inicio = request.form.get('hora_inicio')
         metodo_pago = request.form.get('metodo_pago')
-        comprobante = request.files.get('image')  # El archivo puede ser opcional
+        comprobante = "Admin"
+        monto = request.form.get('monto')
 
         # Obtener la cancha por ID
         cancha = Cancha.query.get(cancha_id)
@@ -139,38 +159,6 @@ def crear_reservacion():
         
         # Convertir la fecha en formato año-mes-día
         fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")  # Cambiado a "%Y-%m-%d"
-
-        # Intentar subir el archivo a Node.js primero
-        payment_proof = None
-        if metodo_pago in ['pago movil', 'zelle'] and comprobante:
-            try:
-                print("ARCHIVOOOO recibido:", comprobante)  # Depuración
-                # Guardamos el archivo localmente de forma temporal antes de enviarlo al servidor Node.js
-                filename = secure_filename(comprobante.filename)
-                filepath = os.path.join('uploads', filename)
-                comprobante.save(filepath)
-
-                # Abrimos el archivo y lo enviamos al servidor Node.js
-                with open(filepath, 'rb') as file:
-                    # Enviar la imagen a la ruta de Node.js
-                    url = 'http://localhost:3000/api/reservas/ImageCom'  # Ruta del servidor Node.js
-                    files = {'image': (filename, file)}
-                    response = requests.post(url, files=files)
-
-                    # Si la respuesta del servidor Node.js es exitosa, obtenemos el nombre de la imagen
-                    if response.status_code == 200:
-                        # Suponemos que el servidor Node.js devuelve el nombre de la imagen
-                        payment_proof = response.json().get('filename')
-                    else:
-                        flash(f'Error al subir el comprobante: {response.text}', 'danger')
-                        return redirect(url_for('main.crear_reservacion'))  # Aquí hay un return si no se sube el archivo
-
-                # Eliminar el archivo temporal si todo fue bien
-                os.remove(filepath)
-
-            except Exception as e:
-                flash(f'Error al guardar el comprobante: {str(e)}', 'danger')
-                return redirect(url_for('main.crear_reservacion'))  # Aquí también aseguramos un return en caso de error
 
         # Solo creamos la reservación y el pago si el comprobante fue subido con éxito
         try:
@@ -196,10 +184,10 @@ def crear_reservacion():
             pago = Pago(
                 user_id=user_id,
                 reserva_id=reservacion.id,
-                amount=cancha.price_per_hour,  # Accede correctamente al precio por hora de la cancha
+                amount=monto,  # Accede correctamente al precio por hora de la cancha
                 payment_method=metodo_pago,
                 payment_status='pendiente',
-                payment_proof=payment_proof  # Asignamos el comprobante si se subió
+                payment_proof=comprobante  # Asignamos el comprobante si se subió
             )
             db.session.add(pago)
             db.session.commit()
@@ -236,3 +224,105 @@ def toggle_block(user_id):
         flash('No se encontró el usuario', 'danger')
 
     return redirect(url_for('main.listaUsuarios'))
+
+@main_routes.route('/update_payment_status/<int:pago_id>', methods=['POST'])
+def update_payment_status(pago_id):
+    # Obtener el pago de la base de datos usando el ID
+    pago = Pago.query.get(pago_id)
+
+    if pago:
+        # Obtener el nuevo estado del formulario
+        new_status = request.form.get('payment_status')
+        
+        if new_status:
+            # Actualizar el estado del pago
+            pago.payment_status = new_status
+            db.session.commit()  # Guardar los cambios en la base de datos
+            
+            flash('Estado del pago actualizado con éxito', 'success')
+        else:
+            flash('Estado de pago no válido', 'danger')
+    else:
+        flash('Pago no encontrado', 'danger')
+
+    # Redirigir a la página de pagos (o donde sea que quieras redirigir)
+    return redirect(url_for('main.pagos'))
+
+
+@main_routes.route('/crear-clase', methods=['GET', 'POST'])
+def crear_clase():
+    horas_disponibles = []
+    canchas = Cancha.query.all()  # Obtener todas las canchas de la base de datos
+    current_date = datetime.today().date()
+
+    if request.method == 'POST':
+        # Obtener datos del formulario
+        nombre = request.form.get('nombre')
+        cancha_id = request.form.get('cancha')
+        fecha = request.form.get('fecha')
+        hora_inicio = request.form.get('hora_inicio')
+        status = request.form.get('status')
+
+        # Obtener la cancha y el horario
+        cancha = Cancha.query.get(cancha_id)
+        hora_inicio = datetime.strptime(hora_inicio, "%H:%M:%S").time()
+        hora_fin_obj = (datetime.combine(datetime.today(), hora_inicio) + timedelta(hours=1)).time()
+
+        # Crear el horario ocupado
+        fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")  # Cambiado a "%Y-%m-%d"
+        horario = Horario(
+            cancha_id=cancha.id,
+            date=fecha_datetime,
+            start_time=hora_inicio,
+            end_time=hora_fin_obj.strftime('%H:%M:%S'),  # Almacenar hora de fin
+            estado='ocupado'  # Cambiar el estado a 'ocupado'
+        )
+
+        try:
+            # Agregar el horario a la base de datos
+            db.session.add(horario)
+            db.session.commit()
+
+            # Crear la clase y asociarla con el horario creado
+            clase = Clase(
+                nombre=nombre,
+                horario_id=horario.id,  # Asignar el ID del horario creado
+                status=status
+            )
+            db.session.add(clase)
+            db.session.commit()
+
+            flash('Clase creada con éxito', 'success')
+            return redirect(url_for('main.clases'))
+
+        except Exception as e:
+            db.session.rollback()  # Revertir los cambios si ocurre un error
+            flash(f'Error al crear la clase: {str(e)}', 'danger')
+            return redirect(url_for('main.crear_clase'))
+
+    return render_template('crear-clase.html', canchas=canchas, current_date=current_date, horas_disponibles=horas_disponibles)
+
+@main_routes.route('/update_clase_status/<int:clase_id>', methods=['POST'])
+def update_clase_status(clase_id):
+    # Buscar la clase en la base de datos
+    clase = Clase.query.get(clase_id)
+
+    if clase:
+        # Obtener el nuevo estado del formulario
+        new_status = request.form.get('status')
+        # Actualizar el estado de la clase
+        clase.status = new_status
+        db.session.commit()
+
+        flash('Estado de la clase actualizado con éxito', 'success')
+    else:
+        flash('Clase no encontrada', 'danger')
+
+    return redirect(url_for('main.clases'))
+
+
+@main_routes.route('/', methods=['GET', 'POST'])
+def login():
+    return render_template('login.html')
+
+
