@@ -1,50 +1,35 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from config import Config
 from routes import main_routes
-from models import db, Pago  # Importa db desde el archivo de modelos
-import os
+from models import db, Usuario, Pago, Reservacion, Horario, Cancha, Clase
+from functools import wraps
+from werkzeug.security import generate_password_hash
 
+# Generar un hash para la contraseña
+hashed_password = generate_password_hash('123456')
+print("contraseña " + hashed_password)
+
+# Inicializar la aplicación Flask
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Configuración para aceptar las imágenes
-UPLOAD_FOLDER = 'static/imagenes/inmuebles'  
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
-
-# Función para verificar si el archivo tiene una extensión permitida
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Inicializa la instancia de SQLAlchemy con la aplicación
+# Inicializar la instancia de SQLAlchemy
 db.init_app(app)
+
+# Configuración de Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "main.login"  # Ruta a la que se redirige si no está autenticado
 
 # Registrar las rutas desde otro archivo
 app.register_blueprint(main_routes)
 
-@app.route('/update_payment_status', methods=['POST'])
-def update_payment_status():
-    try:
-        payment_id = request.form['id']  # Obtener el ID del pago
-        status = request.form['status']  # Obtener el nuevo estado
+# Función de carga del usuario (Flask-Login)
+@login_manager.user_loader
+def load_user(user_id):
+    return Usuario.query.get(int(user_id))
 
-        # Buscar el pago en la base de datos
-        pago = Pago.query.get(payment_id)
-
-        if not pago:
-            return jsonify({"error": "Pago no encontrado"}), 404
-
-        # Actualizar el estado del pago
-        pago.payment_status = status
-        db.session.commit()  # Guardar los cambios en la base de datos
-
-        return jsonify({"success": "Estado del pago actualizado correctamente"}), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)

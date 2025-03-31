@@ -31,48 +31,40 @@
 
         </div>
     </div>
-
         <!-- Bootstrap JS -->
         <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
-        <!-- Plugins -->
+        <!--plugins-->
         <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
         <script src="{{ url_for('static', filename='assets/plugins/metismenu/js/metisMenu.min.js') }}"></script>
         <script src="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js') }}"></script>
         <script src="{{ url_for('static', filename='assets/plugins/datatable/js/jquery.dataTables.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='assets/plugins/datatable/js/dataTables.bootstrap5.min.js') }}"></script> 
+        <script src="{{ url_for('static', filename='assets/plugins/datatable/js/dataTables.bootstrap5.min.js') }}"></script>
         <script src="{{ url_for('static', filename='assets/js/app.js') }}"></script>
-    
+        
         <script>
             $(document).ready(function() {
-                var table = $('#example2').DataTable({
-                    lengthChange: false,
-                    buttons: ['copy', 'excel', 'pdf', 'print']
-                });
+                // Asegúrate de que el contenedor del sidebar esté presente
+                var sidebarWrapper = document.querySelector('.sidebar-wrapper');
+                
+                if (sidebarWrapper) {
+                    // Inicializa PerfectScrollbar solo si el contenedor existe
+                    new PerfectScrollbar(sidebarWrapper);
+                }
     
-                table.buttons().container().appendTo('#example2_wrapper .col-md-6:eq(0)');
-    
-                // Detecta el cambio en el estado del pago y actualiza en la base de datos
-                $('.payment-status').change(function() {
-                    var paymentStatus = $(this).val();
-                    var paymentId = $(this).data('pago-id');
-    
-                    // Realizar la solicitud AJAX para actualizar el estado
-                    $.ajax({
-                        url: '/update_payment_status',  // Define tu ruta de backend aquí
-                        type: 'POST',
-                        data: {
-                            id: paymentId,
-                            status: paymentStatus
-                        },
-                        success: function(response) {
-                            alert('Estado del pago actualizado correctamente');
-                        },
-                        error: function() {
-                            alert('Hubo un error al actualizar el estado del pago');
-                        }
-                    });
-                });
+                // Inicializa MetisMenu para el comportamiento del menú desplegable
+                $('#sidebarMenu').metisMenu();
             });
+        </script>
+        <script>
+            $(document).ready(function() {
+                var table = $('#example2').DataTable( {
+                    lengthChange: false,
+                    buttons: [ 'copy', 'excel', 'pdf', 'print']
+                } );
+             
+                table.buttons().container()
+                    .appendTo( '#example2_wrapper .col-md-6:eq(0)' );
+            } );
         </script>
 </body>
 

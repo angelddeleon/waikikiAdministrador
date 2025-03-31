@@ -1,13 +1,25 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, Blueprint, jsonify
 from models import db, Usuario, Pago, Reservacion, Horario, Cancha, Clase
-import requests
 from datetime import datetime, time, timedelta
-import os
-from werkzeug.utils import secure_filename
+from flask_login import login_user, login_required, current_user, logout_user
+from functools import wraps
 
 main_routes = Blueprint('main', __name__)
 
+# Decorador para verificar si el usuario es admin
+def admin_required(f):
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if current_user.role != 'admin':
+            flash('No tienes permiso para acceder a esta página', 'danger')
+            return redirect(url_for('main.login'))  # Redirigir al login si no es admin
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @main_routes.route('/reservas')
+@admin_required
 def listaReservas():
     # Usamos un join para obtener las reservaciones con los usuarios y horarios relacionados
     reservas = db.session.query(Reservacion).join(Usuario).join(Horario).all()
@@ -30,7 +42,9 @@ def listaReservas():
 
 
 @main_routes.route('/update_reservation_status/<int:reservacion_id>', methods=['POST'])
+@admin_required
 def update_reservation_status(reservacion_id):
+
     # Buscar la reservación en la base de datos
     reservacion = Reservacion.query.get(reservacion_id)
 
@@ -47,8 +61,11 @@ def update_reservation_status(reservacion_id):
 
     return redirect(url_for('main.listaReservas'))
 
+
 @main_routes.route('/clases')
+@admin_required
 def clases():
+
     try:
         # Obtener todas las clases de la base de datos, incluyendo sus horarios y canchas
         clases = Clase.query.join(Horario).join(Cancha).all()  # Asegurándote de hacer el join correctamente
@@ -67,7 +84,9 @@ def clases():
 
 
 @main_routes.route('/pagos')
+@admin_required
 def pagos():
+
     try:
         # Obtener todos los pagos de la base de datos
         pagos = Pago.query.all()  # Obtiene todos los pagos registrados en la base de datos
@@ -83,8 +102,11 @@ def pagos():
         flash(f'Error al obtener los pagos: {str(e)}', 'danger')
         return render_template('pagos-datatable.html', pagos=[])
 
+
 @main_routes.route('/obtener_horas_disponibles', methods=['GET'])
+@admin_required
 def obtener_horas_disponibles():
+
     fecha = request.args.get('fecha')  # Fecha seleccionada
     cancha_id = request.args.get('cancha_id')  # ID de la cancha seleccionada
 
@@ -127,11 +149,17 @@ def obtener_horas_disponibles():
 
     return jsonify(horas_disponibles)
 
+
 @main_routes.route('/crear-reserva', methods=['GET', 'POST'])
+@admin_required
 def crear_reservacion():
+
     horas_disponibles = []  # Inicializamos la variable horas_disponibles
     canchas = Cancha.query.all()  # Asegúrate de obtener todas las canchas de la base de datos
     current_date = datetime.today().date()
+
+    # Lista de métodos de pago
+    metodos_pago = ['efectivo', 'pago movil', 'zelle', 'punto de venta']
 
     if request.method == 'POST':
         # Obtener datos del formulario
@@ -158,7 +186,7 @@ def crear_reservacion():
         hora_fin_obj = (datetime.combine(datetime.today(), hora_inicio) + timedelta(hours=1)).time()  # Sumar una hora
         
         # Convertir la fecha en formato año-mes-día
-        fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")  # Cambiado a "%Y-%m-%d"
+        fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")
 
         # Solo creamos la reservación y el pago si el comprobante fue subido con éxito
         try:
@@ -175,14 +203,14 @@ def crear_reservacion():
             db.session.commit()
 
             # Crear la reservación con el horario asignado
-            user_id = 1  # Establecer el ID del usuario que está haciendo la reservación
+            user_id = current_user.id  # Establecer el ID del usuario que está haciendo la reservación
             reservacion = Reservacion(user_id=user_id, horario_id=horario.id)  # Toma el primer horario disponible
             db.session.add(reservacion)
             db.session.commit()
 
             # Procesar el pago
             pago = Pago(
-                user_id=user_id,
+                user_id= current_user.id,
                 reserva_id=reservacion.id,
                 amount=monto,  # Accede correctamente al precio por hora de la cancha
                 payment_method=metodo_pago,
@@ -193,7 +221,7 @@ def crear_reservacion():
             db.session.commit()
 
             flash('Reservación creada con éxito', 'success')
-            return redirect(url_for('main.listaReservas'))  # Asegúrate de que hay un return aquí
+            return redirect(url_for('main.listaReservas'))  # Asegúrate de que haya un return aquí
 
         except Exception as e:
             db.session.rollback()  # Revertimos cualquier cambio si ocurre un error
@@ -201,17 +229,23 @@ def crear_reservacion():
             return redirect(url_for('main.crear_reservacion'))  # Siempre tener un return en el caso de un error
 
     # Si la solicitud es GET, generar los horarios disponibles
-    return render_template('crear-reserva.html', canchas=canchas, current_date=current_date, horas_disponibles=horas_disponibles)  # Asegúrate de que haya un return aquí
+    return render_template('crear-reserva.html', canchas=canchas, current_date=current_date, horas_disponibles=horas_disponibles, metodos_pago=metodos_pago)  # Pasar los métodos de pago aquí
 
 
 @main_routes.route('/usuarios')
+@admin_required
 def listaUsuarios():
+
     usuarios = Usuario.query.all()  # Obtiene todos los usuarios
     return render_template('usuarios-datatable.html', usuarios=usuarios)
 
+
 # Ruta para bloquear/desbloquear un usuario
+
 @main_routes.route('/toggle_block/<int:user_id>', methods=['POST'])
+@admin_required
 def toggle_block(user_id):
+
     usuario = Usuario.query.get(user_id)
 
     if usuario:
@@ -225,8 +259,11 @@ def toggle_block(user_id):
 
     return redirect(url_for('main.listaUsuarios'))
 
+
 @main_routes.route('/update_payment_status/<int:pago_id>', methods=['POST'])
+@admin_required
 def update_payment_status(pago_id):
+
     # Obtener el pago de la base de datos usando el ID
     pago = Pago.query.get(pago_id)
 
@@ -250,7 +287,9 @@ def update_payment_status(pago_id):
 
 
 @main_routes.route('/crear-clase', methods=['GET', 'POST'])
+@admin_required
 def crear_clase():
+
     horas_disponibles = []
     canchas = Cancha.query.all()  # Obtener todas las canchas de la base de datos
     current_date = datetime.today().date()
@@ -302,8 +341,11 @@ def crear_clase():
 
     return render_template('crear-clase.html', canchas=canchas, current_date=current_date, horas_disponibles=horas_disponibles)
 
+
 @main_routes.route('/update_clase_status/<int:clase_id>', methods=['POST'])
+@admin_required
 def update_clase_status(clase_id):
+
     # Buscar la clase en la base de datos
     clase = Clase.query.get(clase_id)
 
@@ -323,6 +365,31 @@ def update_clase_status(clase_id):
 
 @main_routes.route('/', methods=['GET', 'POST'])
 def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        # Buscar al usuario por su correo electrónico
+        usuario = Usuario.query.filter_by(email=email).first()
+
+        if usuario and usuario.check_password(password):
+            login_user(usuario)  # Inicia la sesión del usuario
+            flash('Inicio de sesión exitoso', 'success')
+
+            # Verificamos si el usuario tiene el rol de admin
+            if usuario.role == 'admin':
+                return redirect(url_for('main.listaReservas'))  # Página de administración
+            else:
+                flash('No tienes acceso de administrador', 'danger')
+                return redirect(url_for('main.login'))
+        else:
+            flash('Correo o contraseña incorrectos', 'danger')
+    
     return render_template('login.html')
 
-
+@main_routes.route('/logout')
+@admin_required
+def logout():
+    logout_user()  # Cierra la sesión
+    flash('Has cerrado sesión exitosamente', 'success')
+    return redirect(url_for('main.login'))

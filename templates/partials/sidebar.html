@@ -4,7 +4,7 @@
     <div class="sidebar-wrapper" data-simplebar="true">
         <div class="sidebar-header">
             <div>
-                <img src="{{ url_for('static', filename='assets/imagenes/logo1.png') }}" alt="logo" height="40px" padding="20px">
+                <img src="{{ url_for('static', filename='assets/imagenes/logo1.png') }}" alt="logo" height="25em" padding="1em">
             </div>
             <div class="toggle-icon ms-auto" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-expanded="false">
                 <i class='bx bx-menu'></i>
@@ -12,58 +12,72 @@
         </div>
         <!--navigation-->
         <ul class="metismenu collapse" id="sidebarMenu">
-            <li>
-                <a href="javascript:;" class="has-arrow">
+            <!-- Existing menu items -->
+            <li style="background-color: {% if request.endpoint == 'main.crear_reservacion' or request.endpoint == 'main.listaReservas' %}#003366; color: white;{% endif %}">
+                <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.crear_reservacion' or request.endpoint == 'main.listaReservas' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-calendar-week'></i></div>
                     <div class="menu-title">Reservaciones</div>
                 </a>
                 <ul>
-                    <li> <a href="{{ url_for('main.crear_reservacion') }}"><i class="bx bx-right-arrow-alt"></i>Crear Reservacion</a></li>
-                    <li> <a href="{{ url_for('main.listaReservas') }}"><i class="bx bx-right-arrow-alt"></i>Lista Reservacion</a></li>
+                    <li style="background-color: {% if request.endpoint == 'main.crear_reservacion' %}#336699; color: white;{% endif %}">
+                        <a href="{{ url_for('main.crear_reservacion') }}" style="color: {% if request.endpoint == 'main.crear_reservacion' %}white{% endif %};">Crear Reservacion</a>
+                    </li>
+                    <li style="background-color: {% if request.endpoint == 'main.listaReservas' %}#336699; color: white;{% endif %}">
+                        <a href="{{ url_for('main.listaReservas') }}" style="color: {% if request.endpoint == 'main.listaReservas' %}white{% endif %};">Lista Reservacion</a>
+                    </li>
                 </ul>
             </li>
-            <li>
-                <a href="javascript:;" class="has-arrow">
+            <li style="background-color: {% if request.endpoint == 'main.crear_clase' or request.endpoint == 'main.clases' %}#003366; color: white;{% endif %}">
+                <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.crear_clase' or request.endpoint == 'main.clases' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-book-bookmark'></i></div>
                     <div class="menu-title">Clases</div>
                 </a>
                 <ul>
-                    <li> <a href="{{ url_for('main.crear_clase') }}"><i class="bx bx-right-arrow-alt"></i>Crear Clase</a></li>
-                    <li> <a href="{{ url_for('main.clases') }}"><i class="bx bx-right-arrow-alt"></i>Lista Clases</a></li>
+                    <li style="background-color: {% if request.endpoint == 'main.crear_clase' %}#336699; color: white;{% endif %}">
+                        <a href="{{ url_for('main.crear_clase') }}" style="color: {% if request.endpoint == 'main.crear_clase' %}white{% endif %};">Crear Clase</a>
+                    </li>
+                    <li style="background-color: {% if request.endpoint == 'main.clases' %}#336699; color: white;{% endif %}">
+                        <a href="{{ url_for('main.clases') }}" style="color: {% if request.endpoint == 'main.clases' %}white{% endif %};">Lista Clases</a>
+                    </li>
                 </ul>
             </li>
-            <li>
-                <a href="javascript:;" class="has-arrow">
+            <li style="background-color: {% if request.endpoint == 'main.pagos' %}#003366; color: white;{% endif %}">
+                <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.pagos' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-money'></i></div>
                     <div class="menu-title">Pagos</div>
                 </a>
                 <ul>
-                    <li> <a href="{{ url_for('main.pagos') }}"><i class="bx bx-right-arrow-alt"></i>Lista Pagos</a></li>            
+                    <li style="background-color: {% if request.endpoint == 'main.pagos' %}#336699; color: white;{% endif %}">
+                        <a href="{{ url_for('main.pagos') }}" style="color: {% if request.endpoint == 'main.pagos' %}white{% endif %};">Lista Pagos</a>
+                    </li>            
                 </ul>
             </li>
 
-            <li>
-                <a href="javascript:;" class="has-arrow">
+            <li style="background-color: {% if request.endpoint == 'main.listaUsuarios' %}#003366; color: white;{% endif %}">
+                <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.listaUsuarios' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-user'></i></div>
                     <div class="menu-title">Usuarios</div>
                 </a>
                 <ul>
-                    <li> <a href="{{ url_for('main.listaUsuarios') }}"><i class="bx bx-right-arrow-alt"></i>Lista de Usuarios</a></li>
-
+                    <li style="background-color: {% if request.endpoint == 'main.listaUsuarios' %}#336699; color: white;{% endif %}">
+                        <a href="{{ url_for('main.listaUsuarios') }}" style="color: {% if request.endpoint == 'main.listaUsuarios' %}white{% endif %};">Lista de Usuarios</a>
+                    </li>
                 </ul>
             </li>
 
-            <li>
-                <a href="javascript:;" class="has-arrow">
+            <!-- New Configuration menu -->
+            <li style="background-color: {% if request.endpoint == 'main.logout' %}#003366; color: white;{% endif %}">
+                <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.logout' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-cog'></i></div>
-                    <div class="menu-title">Configuracion</div>
+                    <div class="menu-title">Configuración</div>
                 </a>
                 <ul>
-                    <li> <a href="app-chat-box.html"><i class="bx bx-right-arrow-alt"></i>Salir</a></li>
+                    <li style="background-color: {% if request.endpoint == 'main.logout' %}#336699; color: white;{% endif %}">
+                        <a href="{{ url_for('main.logout') }}" style="color: {% if request.endpoint == 'main.logout' %}white{% endif %};">Salir</a>
+                    </li>
                 </ul>
             </li>
-            
-            
+
         </ul>
         <!--end navigation-->
     </div>

@@ -7,6 +7,7 @@
                         <th>ID Clase</th>
                         <th>Profesor</th>
                         <th>Cancha</th>
+                        <th>Fecha</th>
                         <th>Hora Inicio</th>
                         <th>Hora Final</th>
                         <th>Estado Clase</th>
@@ -19,8 +20,9 @@
                             <td>{{ clase.id }}</td>
                             <td>{{ clase.nombre }}</td>
                             <td>{{ clase.horario.cancha.name }}</td> <!-- Nombre de la cancha -->
-                            <td>{{ clase.horario.start_time }}</td> <!-- Hora inicio de la clase -->
-                            <td>{{ clase.horario.end_time }}</td> <!-- Hora fin de la clase -->
+                            <td>{{ clase.horario.date }}</td> 
+                            <td>{{ clase.horario.start_time.strftime('%I:%M %p') }}</td> <!-- Hora inicio de la clase en formato AM/PM -->
+                            <td>{{ clase.horario.end_time.strftime('%I:%M %p') }}</td>
                             <td>{{ clase.status }}</td> <!-- Estado de la clase -->
                             <td>
                                 <form action="{{ url_for('main.update_clase_status', clase_id=clase.id) }}" method="POST">
