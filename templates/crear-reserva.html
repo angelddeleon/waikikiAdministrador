@@ -29,7 +29,7 @@
                     <select id="cancha" name="cancha" class="form-control" required>
                         <option value="">Seleccione una cancha</option>
                         {% for cancha in canchas %}
-                            <option value="{{ cancha.id }}">{{ cancha.name }} - ${{ cancha.price_per_hour }} por hora</option>
+                            <option value="{{ cancha.id }}" data-precio="{{ cancha.price_per_hour }}">{{ cancha.name }} - ${{ cancha.price_per_hour }} por hora</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -49,13 +49,13 @@
                 <div class="form-group">
                     <label for="hora_final">Hora de Final</label>
                     <select id="hora_final" name="hora_final" class="form-control" required>
-                        <option value="">Seleccione una hora de inicio</option>
+                        <option value="">Seleccione una hora de final</option>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label for="monto">Monto ($)</label>
-                    <input type="number" id="monto" name="monto" class="form-control" step="0.01" min="0" required>
+                    <input type="number" id="monto" name="monto" class="form-control" step="0.01" min="0" readonly required>
                 </div>
 
                 <div class="form-group">
@@ -79,39 +79,39 @@
         $(document).ready(function() {
             // Función para convertir hora en formato de 24 horas a 12 horas con AM/PM
             function convertirHoraAMPM(hora24) {
-                var hora = parseInt(hora24.split(":")[0]); // Obtiene la hora (sin los minutos ni segundos)
-                var minutos = hora24.split(":")[1]; // Obtiene los minutos
-                var suffix = hora >= 12 ? "PM" : "AM"; // Determina si es AM o PM
+                var hora = parseInt(hora24.split(":")[0]);
+                var minutos = hora24.split(":")[1];
+                var suffix = hora >= 12 ? "PM" : "AM";
                 if (hora > 12) {
-                    hora -= 12; // Convierte a formato de 12 horas
+                    hora -= 12;
                 } else if (hora === 0) {
-                    hora = 12; // Para el caso de la medianoche (00:00)
+                    hora = 12;
                 }
-                return hora + ":" + minutos + " " + suffix; // Devuelve la hora en formato AM/PM
+                return hora + ":" + minutos + " " + suffix;
             }
-        
+
             // Función para convertir hora AM/PM a formato de 24 horas
             function convertirHora24(horaAMPM) {
-                var partes = horaAMPM.split(' '); // Separa la hora y AM/PM
-                var horaMinutos = partes[0].split(':'); // Separa hora y minutos
+                var partes = horaAMPM.split(' ');
+                var horaMinutos = partes[0].split(':');
                 var hora = parseInt(horaMinutos[0]);
                 var minutos = horaMinutos[1];
                 var ampm = partes[1];
-        
+
                 if (ampm === 'PM' && hora !== 12) {
-                    hora += 12; // Convierte PM a formato 24 horas
+                    hora += 12;
                 } else if (ampm === 'AM' && hora === 12) {
-                    hora = 0; // Convierte 12 AM a 00
+                    hora = 0;
                 }
                 
-                return (hora < 10 ? '0' : '') + hora + ':' + minutos + ':00'; // Regresa el formato de 24 horas (HH:mm:ss)
+                return (hora < 10 ? '0' : '') + hora + ':' + minutos + ':00';
             }
-        
+
             // Función que se ejecuta cuando cambia el valor del campo 'cancha' o 'fecha'
             $('#cancha, #fecha').change(function() {
                 var cancha_id = $('#cancha').val();
                 var fecha = $('#fecha').val();
-        
+
                 if (cancha_id && fecha) {
                     $.ajax({
                         url: '/obtener_horas_disponibles',  // Llamada a la ruta que obtiene las horas disponibles
@@ -120,10 +120,8 @@
                         success: function(response) {
                             // Limpiar el select de horas inicio
                             $('#hora_inicio').empty();
-        
-                            // Agregar un valor vacío al principio del select
                             $('#hora_inicio').append('<option value="">Seleccione una hora de inicio</option>');
-        
+
                             // Recorrer las horas disponibles y agregarlas al select
                             response.forEach(function(hora) {
                                 var horaFormatoAMPM = convertirHoraAMPM(hora.start_time); // Convierte la hora a formato AM/PM
@@ -136,13 +134,13 @@
                     });
                 }
             });
-        
+
             // Función que se ejecuta cuando cambia la hora de inicio
             $('#hora_inicio').change(function() {
                 var hora_inicio = $(this).val();  // Obtenemos la hora de inicio seleccionada
                 if (hora_inicio) {
                     var hora_inicio_24 = hora_inicio;  // Hora de inicio en formato HH:mm:ss directamente
-        
+
                     $.ajax({
                         url: '/obtener_horas_disponibles',  // Llamada a la ruta que obtiene las horas disponibles
                         method: 'GET',
@@ -150,30 +148,15 @@
                         success: function(response) {
                             // Limpiar el select de horas final
                             $('#hora_final').empty();
-        
-                            // Agregar un valor vacío al principio del select
                             $('#hora_final').append('<option value="">Seleccione una hora de final</option>');
-        
+
                             // Recorrer las horas disponibles y agregar solo las mayores que la hora de inicio
                             response.forEach(function(hora) {
-                                // Si la hora de fin es mayor que la de inicio, agregarla
                                 if (hora.start_time > hora_inicio_24) {
-                                    var horaFormatoAMPM = convertirHoraAMPM(hora.start_time); // Convertir a formato AM/PM
+                                    var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
                                     $('#hora_final').append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
                                 }
                             });
-
-                            // Hora en formato HH:mm:ss (por ejemplo "10:00:00")
-                            let hora_str = "23:00:00";
-
-                            // Crear un objeto Date con la hora en formato HH:mm:ss (esto crea un objeto Date con la fecha actual y la hora proporcionada)
-                            let hora_obj = new Date("1970-01-01T" + hora_str + "Z");  // Usamos 1970-01-01 como fecha fija para solo trabajar con la hora
-
-                            // Obtener la hora formateada en HH:mm:ss
-                            let hora_formateada = hora_obj.toISOString().substr(11, 8);  // Extraemos HH:mm:ss de la cadena ISO 8601
-
-
-                            $('#hora_final').append('<option value="' + hora_formateada + '">' + convertirHoraAMPM(hora_formateada) + '</option>');
                         },
                         error: function() {
                             alert('Error al obtener las horas disponibles');
@@ -181,9 +164,30 @@
                     });
                 }
             });
+
+            // Calcular el monto cuando se selecciona la hora de inicio y hora final
+            $('#hora_final').change(function() {
+                var hora_inicio = $('#hora_inicio').val();
+                var hora_final = $(this).val();
+                var precioPorHora = parseFloat($('#cancha option:selected').data('precio'));
+
+                if (hora_inicio && hora_final && precioPorHora) {
+                    var hora_inicio_24 = convertirHora24(hora_inicio);
+                    var hora_final_24 = convertirHora24(hora_final);
+
+                    var hora_inicio_date = new Date("1970-01-01T" + hora_inicio_24 + "Z");
+                    var hora_final_date = new Date("1970-01-01T" + hora_final_24 + "Z");
+
+                    var diferenciaHoras = (hora_final_date - hora_inicio_date) / (1000 * 60 * 60);
+
+                    if (diferenciaHoras > 0) {
+                        var montoTotal = diferenciaHoras * precioPorHora;
+                        $('#monto').val(montoTotal.toFixed(2));
+                    }
+                }
+            });
         });
     </script>
-        
 
 </body>
 </html>

@@ -60,7 +60,6 @@ class Horario(db.Model):
         return f"<Horario {self.date} - {self.start_time} to {self.end_time}>"
 
 
-# Modelo para la tabla 'pagos'
 class Pago(db.Model):
     __tablename__ = 'pagos'
 
@@ -74,11 +73,12 @@ class Pago(db.Model):
     tasa_valor = db.Column(Numeric(10, 2), nullable=False)
 
     usuario = db.relationship('Usuario', backref=db.backref('pagos', lazy=True))
-    # Use back_populates to create explicit bi-directional relationship with 'Reservacion'
-    reservacion = db.relationship('Reservacion', back_populates='pago', uselist=False, foreign_keys='Reservacion.pago_id')
+    # Aquí usamos 'back_populates' para establecer la relación inversa.
+    reservaciones = db.relationship('Reservacion', back_populates='pago', lazy=True)
 
     def __repr__(self):
         return f"<Pago {self.id} - {self.amount} - {self.payment_status}>"
+
 
 # Modelo para la tabla 'reservaciones'
 class Reservacion(db.Model):
@@ -87,16 +87,17 @@ class Reservacion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     horario_id = db.Column(db.Integer, db.ForeignKey('horarios.id'), nullable=False)
-    pago_id = db.Column(db.Integer, db.ForeignKey('pagos.id'), nullable=True)
+    pago_id = db.Column(db.Integer, db.ForeignKey('pagos.id'), nullable=True)  # Relación muchos a uno
     status = db.Column(db.Enum('pendiente', 'confirmada', 'cancelada', 'terminada'), default='pendiente')
 
     usuario = db.relationship('Usuario', backref=db.backref('reservaciones', lazy=True))
     horario = db.relationship('Horario', backref=db.backref('reservaciones', lazy=True))
-    # Use back_populates to create explicit bi-directional relationship with 'Pago'
-    pago = db.relationship('Pago', back_populates='reservacion', foreign_keys=[pago_id])
+    pago = db.relationship('Pago', back_populates='reservaciones')
 
     def __repr__(self):
         return f"<Reservacion {self.id} - {self.status}>"
+
+
 
 # Modelo para la tabla 'clases'
 class Clase(db.Model):
