@@ -1,3 +1,5 @@
+
+
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
@@ -6,7 +8,8 @@
                     <tr>
                         <th>ID Pago</th>
                         <th>Usuario</th>
-                        <th>Reserva</th>
+                        <th>Reservas</th>
+                        <th>Tasa</th>
                         <th>Monto</th>
                         <th>Método de Pago</th>
                         <th>Comprobante de Pago</th>
@@ -19,7 +22,16 @@
                         <tr>
                             <td>{{ pago.id }}</td>
                             <td>{{ pago.usuario.nombre }}</td>
-                            <td>{{ pago.reservacion.id }}</td>
+                            <td>
+                                {% if pago.reservaciones %}
+                                {% for reserva in pago.reservaciones %}
+                                    {{ reserva.id }}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                Sin reservas
+                            {% endif %}
+                            </td>
+                            <td>{{ pago.tasa_valor }}</td>
                             <td>{{ pago.amount }}</td>
                             <td>{{ pago.payment_method }}</td>
                             <td>
@@ -51,6 +63,7 @@
                         <th>ID Pago</th>
                         <th>Usuario</th>
                         <th>Reserva</th>
+                        <th>Tasa</th>
                         <th>Monto</th>
                         <th>Método de Pago</th>
                         <th>Comprobante de Pago</th>
@@ -64,7 +77,7 @@
 </div>
 
 <!-- Modal de Imagen -->
-<div id="imageModal" class="modal" onclick="closeModal()">
+<div id="imageModal" class="modal" style="display: none;" onclick="closeModal()">
     <div class="modal-content">
         <span class="close" onclick="closeModal()">&times;</span>
         <img id="modalImage" src="" alt="Comprobante de Pago" style="width: 100%; height: auto;">
@@ -138,6 +151,7 @@
 
 <script>
     $(document).ready(function() {
+
         // Asegúrate de que el contenedor del sidebar esté presente
         var sidebarWrapper = document.querySelector('.sidebar-wrapper');
         
@@ -150,8 +164,10 @@
         $('#sidebarMenu').metisMenu();
     });
 
-    // Función para abrir el modal y mostrar la imagen
-    function openModal(imageSrc) {
+</script>
+<script>
+        // Función para abrir el modal y mostrar la imagen
+        function openModal(imageSrc) {
         var modal = document.getElementById("imageModal");
         var modalImage = document.getElementById("modalImage");
 

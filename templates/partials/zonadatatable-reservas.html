@@ -13,7 +13,6 @@
                         <th>Cancha</th> <!-- Nueva columna para la cancha -->
                         <th>ID Pago</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -27,25 +26,13 @@
                             <td>{{ reservacion.end_time_formatted }}</td>
                             <td>{{ reservacion.horario.cancha.name }}</td> <!-- Mostrar el nombre de la cancha -->
                             <td>
-                                {% if reservacion.pagos %}
-                                    {{ reservacion.pagos[0].id }}  <!-- Suponiendo que una reservación tiene un solo pago -->
+                                {% if reservacion.pago_id %}
+                                    {{ reservacion.pago_id }}  <!-- Suponiendo que una reservación tiene un solo pago -->
                                 {% else %}
-                                    0
+                                    Admin
                                 {% endif %}
                             </td>
                             <td>{{ reservacion.status }}</td>
-                            <td>
-                                <!-- Formulario para cambiar el estado de la reservación -->
-                                <form action="{{ url_for('main.update_reservation_status', reservacion_id=reservacion.id) }}" method="POST">
-                                    <select name="status" class="form-select">
-                                        <option value="pendiente" {% if reservacion.status == 'pendiente' %}selected{% endif %}>Pendiente</option>
-                                        <option value="confirmada" {% if reservacion.status == 'confirmada' %}selected{% endif %}>Confirmada</option>
-                                        <option value="cancelada" {% if reservacion.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
-                                        <option value="terminada" {% if reservacion.status == 'terminada' %}selected{% endif %}>Terminada</option>
-                                    </select>
-                                    <button type="submit" class="btn btn-primary mt-2">Actualizar</button>
-                                </form>
-                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -60,7 +47,6 @@
                         <th>Cancha</th> <!-- Nueva columna para la cancha -->
                         <th>ID Pago</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
                     </tr>
                 </tfoot>
             </table>

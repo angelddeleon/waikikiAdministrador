@@ -1,8 +1,9 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, Blueprint, jsonify
-from models import db, Usuario, Pago, Reservacion, Horario, Cancha, Clase
+from models import db, Usuario, Pago, Reservacion, Horario, Cancha, Clase, Tasa
 from datetime import datetime, time, timedelta
 from flask_login import login_user, login_required, current_user, logout_user
 from functools import wraps
+import pytz
 
 main_routes = Blueprint('main', __name__)
 
@@ -41,27 +42,6 @@ def listaReservas():
     return render_template('reservas-datatable.html', reservas=reservas)
 
 
-@main_routes.route('/update_reservation_status/<int:reservacion_id>', methods=['POST'])
-@admin_required
-def update_reservation_status(reservacion_id):
-
-    # Buscar la reservación en la base de datos
-    reservacion = Reservacion.query.get(reservacion_id)
-
-    if reservacion:
-        # Obtener el nuevo estado del formulario
-        new_status = request.form.get('status')
-        # Actualizar el estado de la reservación
-        reservacion.status = new_status
-        db.session.commit()
-
-        flash('Estado de la reservación actualizado con éxito', 'success')
-    else:
-        flash('Reservación no encontrada', 'danger')
-
-    return redirect(url_for('main.listaReservas'))
-
-
 @main_routes.route('/clases')
 @admin_required
 def clases():
@@ -86,10 +66,9 @@ def clases():
 @main_routes.route('/pagos')
 @admin_required
 def pagos():
-
     try:
         # Obtener todos los pagos de la base de datos
-        pagos = Pago.query.all()  # Obtiene todos los pagos registrados en la base de datos
+        pagos = db.session.query(Pago).outerjoin(Reservacion, Pago.id == Reservacion.pago_id).all()
 
         # Si no hay pagos, se puede mostrar un mensaje
         if not pagos:
@@ -102,141 +81,152 @@ def pagos():
         flash(f'Error al obtener los pagos: {str(e)}', 'danger')
         return render_template('pagos-datatable.html', pagos=[])
 
-
 @main_routes.route('/obtener_horas_disponibles', methods=['GET'])
-@admin_required
 def obtener_horas_disponibles():
+    # Obtener los parámetros del request
+    cancha_id = request.args.get('cancha_id')
+    fecha_str = request.args.get('fecha')
 
-    fecha = request.args.get('fecha')  # Fecha seleccionada
-    cancha_id = request.args.get('cancha_id')  # ID de la cancha seleccionada
+    if not cancha_id or not fecha_str:
+        return jsonify({"message": "Faltan parámetros: cancha_id y fecha"}), 400
 
-    # Verificar si la fecha se ha pasado correctamente
-    if not fecha:
-        flash('La fecha es obligatoria', 'danger')
-        return redirect(url_for('main.crear_reservacion'))
-
-    # Convertir la fecha de string a datetime usando el formato correcto
     try:
-        fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")  # Cambiado a %Y-%m-%d
+        # Convertir la fecha en formato string a tipo datetime
+        fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
     except ValueError:
-        flash('Formato de fecha incorrecto', 'danger')
-        return redirect(url_for('main.crear_reservacion'))
+        return jsonify({"message": "Formato de fecha incorrecto (YYYY-MM-DD)"}), 400
 
-    # Obtener la cancha y su precio
-    cancha = Cancha.query.get(cancha_id)
+    try:
+        # Definir la zona horaria de Venezuela (America/Caracas)
+        vzla_timezone = pytz.timezone("America/Caracas")
 
-    # Obtener los horarios ocupados para esa cancha y fecha
-    horarios_ocupados = db.session.query(Horario).filter_by(cancha_id=cancha_id, date=fecha_datetime.date(), estado='ocupado').all()
+        # Obtener la hora actual en la zona horaria de Venezuela
+        hora_actual_vzla = datetime.now(vzla_timezone).strftime("%H:%M:%S")
 
-    # Generar los horarios disponibles de 8:00 AM a 10:00 PM
-    horas_disponibles = []
-    for h in range(8, 22):  # De 8:00 AM a 10:00 PM
-        hora_inicio_obj = time(h, 0)  # Hora completa (ejemplo: 08:00)
-        hora_fin_obj = time(h + 1, 0)  # Hora de fin es una hora después (ejemplo: 09:00)
+        hora_str = "10:00:00"
+        hora_obj = datetime.strptime(hora_str, "%H:%M:%S").time()
 
-        # Verificar si el horario está ocupado
-        horario_ocupado = any(horario.start_time == hora_inicio_obj for horario in horarios_ocupados)
+        # Convertir la hora actual a formato 8:00:00 (HH:mm:ss)
+        hora_formateada = hora_obj.strftime("%H:%M:%S")
 
-        if not horario_ocupado:
-            # Crear un diccionario con los datos requeridos para el frontend
-            start_time_formatted = hora_inicio_obj.strftime('%H:%M:%S')
-            start_time_display = hora_inicio_obj.strftime('%I:%M%p').lstrip("0").replace("AM", "AM").replace("PM", "PM")
-            horas_disponibles.append({
-                'start_time': start_time_formatted,
-                'start_time_display': start_time_display,
-                'end_time': hora_fin_obj.strftime('%H:%M:%S'),
-            })
+        print("HORAAAA " + hora_actual_vzla)  # Ejemplo de salida: 08:15:30
 
-    return jsonify(horas_disponibles)
+
+        # Obtener los horarios ocupados para la cancha y fecha específicas
+        horarios_ocupados = Horario.query.filter_by(cancha_id=cancha_id, date=fecha, estado='ocupado').all()
+        # Solo extraemos las horas de inicio en el formato HH:mm:ss
+        horas_ocupadas = [ho.start_time.strftime('%H:%M:%S') for ho in horarios_ocupados]
+
+        # Generar horarios disponibles (de 8:00 AM a 10:00 PM, bloques de 1 hora)
+        horarios_disponibles = []
+        hora_inicio = 8  # 8 AM
+        hora_fin = 23  # 10 PM
+
+        for hora in range(hora_inicio, hora_fin):
+            hora_inicio_horario = time(hour=hora, minute=0, second=0).strftime('%H:%M:%S')  # Formato HH:mm:ss
+
+            # Verificar si el horario está ocupado
+            if hora_inicio_horario not in horas_ocupadas and hora_inicio_horario > hora_actual_vzla:
+                horarios_disponibles.append({
+                    'start_time': hora_inicio_horario
+                })
+
+        return jsonify(horarios_disponibles)
+
+    except Exception as e:
+        print(f"Error al obtener horarios disponibles: {e}")
+        return jsonify({"message": "Error al obtener los horarios", "error": str(e)}), 500
 
 
 @main_routes.route('/crear-reserva', methods=['GET', 'POST'])
 @admin_required
 def crear_reservacion():
-
-    horas_disponibles = []  # Inicializamos la variable horas_disponibles
-    canchas = Cancha.query.all()  # Asegúrate de obtener todas las canchas de la base de datos
+    horas_disponibles = []
+    canchas = Cancha.query.all()
     current_date = datetime.today().date()
-
-    # Lista de métodos de pago
     metodos_pago = ['efectivo', 'pago movil', 'zelle', 'punto de venta']
 
+    # Obtener la tasa actual
+    tasa = Tasa.query.first()  # Obtenemos el valor de la tasa (suponiendo que hay una sola tasa registrada)
+
     if request.method == 'POST':
-        # Obtener datos del formulario
-        cancha_id = request.form.get('cancha')
-        if not cancha_id:
-            flash('Por favor, selecciona una cancha', 'danger')
-            return redirect(url_for('main.crear_reservacion'))  # Aquí ya hay un return si la cancha no está seleccionada
-
-        fecha = request.form.get('fecha')
-        hora_inicio = request.form.get('hora_inicio')
-        metodo_pago = request.form.get('metodo_pago')
-        comprobante = "Admin"
-        monto = request.form.get('monto')
-
-        # Obtener la cancha por ID
-        cancha = Cancha.query.get(cancha_id)
-
-        if not cancha:
-            flash('La cancha seleccionada no existe.', 'danger')
-            return redirect(url_for('main.crear_reservacion'))  # Aquí también hay un return si la cancha no existe
-
-        # Convertir la fecha y hora de inicio a datetime
-        hora_inicio = datetime.strptime(hora_inicio, "%H:%M:%S").time()
-        hora_fin_obj = (datetime.combine(datetime.today(), hora_inicio) + timedelta(hours=1)).time()  # Sumar una hora
-        
-        # Convertir la fecha en formato año-mes-día
-        fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")
-
-        # Solo creamos la reservación y el pago si el comprobante fue subido con éxito
         try:
-            # Crear la reservación con el primer horario disponible
-            horario = Horario(
-                cancha_id=cancha_id,
-                date=fecha_datetime,  # Fecha en formato %Y-%m-%d
-                start_time=hora_inicio,
-                end_time=hora_fin_obj.strftime('%H:%M:%S'),  # Almacenamos hora de fin en formato HH:MM:SS
-                estado='ocupado'
-            )
+            # Obtener datos del formulario
+            cancha_id = request.form.get('cancha')
+            fecha = request.form.get('fecha')
+            hora_inicio = request.form.get('hora_inicio')
+            hora_fin = request.form.get('hora_fin')
+            metodo_pago = request.form.get('metodo_pago')
+            monto = float(request.form.get('monto'))
 
-            db.session.add(horario)
-            db.session.commit()
+            # Convertir fechas y horas
+            hora_inicio_obj = datetime.strptime(hora_inicio, "%H:%M").time()
+            hora_fin_obj = datetime.strptime(hora_fin, "%H:%M").time()
+            fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")
 
-            # Crear la reservación con el horario asignado
-            user_id = current_user.id  # Establecer el ID del usuario que está haciendo la reservación
-            reservacion = Reservacion(user_id=user_id, horario_id=horario.id)  # Toma el primer horario disponible
-            db.session.add(reservacion)
-            db.session.commit()
-
-            # Procesar el pago
+            # Crear el pago con la tasa
             pago = Pago(
-                user_id= current_user.id,
-                reserva_id=reservacion.id,
-                amount=monto,  # Accede correctamente al precio por hora de la cancha
+                user_id=current_user.id,
+                amount=monto,
                 payment_method=metodo_pago,
                 payment_status='pendiente',
-                payment_proof=comprobante  # Asignamos el comprobante si se subió
+                payment_proof="Admin",  # O manejar la subida de comprobante
+                tasa_valor=tasa.monto,  # Guardamos el valor de la tasa en el pago
             )
-            db.session.add(pago)
-            db.session.commit()
 
-            flash('Reservación creada con éxito', 'success')
-            return redirect(url_for('main.listaReservas'))  # Asegúrate de que haya un return aquí
+            # Guardar el pago en la base de datos
+            db.session.add(pago)
+            db.session.commit()  # Hacemos commit para obtener el ID del pago
+
+            # Crear los horarios y las reservaciones
+            current_time = hora_inicio_obj
+            while current_time < hora_fin_obj:
+                next_time = (datetime.combine(datetime.today(), current_time) + timedelta(hours=1)).time()
+
+                # Crear el horario
+                horario = Horario(
+                    cancha_id=cancha_id,
+                    date=fecha_datetime,
+                    start_time=current_time,
+                    end_time=next_time,
+                    estado='ocupado'
+                )
+                db.session.add(horario)
+                db.session.flush()  # Para obtener el ID del horario
+
+                # Crear la reservación y asociarla al pago
+                reservacion = Reservacion(
+                    user_id=current_user.id,
+                    horario_id=horario.id,
+                    status='confirmada',
+                    pago_id=pago.id  # Asociar el pago con la reservación
+                )
+                db.session.add(reservacion)
+
+                current_time = next_time  # Avanzar a la siguiente hora
+
+            db.session.commit()  # Guardamos todo en la base de datos
+
+            flash('Reservaciones creadas con éxito y asociadas al pago', 'success')
+            return redirect(url_for('main.listaReservas'))
 
         except Exception as e:
-            db.session.rollback()  # Revertimos cualquier cambio si ocurre un error
+            db.session.rollback()
             flash(f'Error al crear la reservación: {str(e)}', 'danger')
-            return redirect(url_for('main.crear_reservacion'))  # Siempre tener un return en el caso de un error
+            return redirect(url_for('main.crear_reservacion'))
 
-    # Si la solicitud es GET, generar los horarios disponibles
-    return render_template('crear-reserva.html', canchas=canchas, current_date=current_date, horas_disponibles=horas_disponibles, metodos_pago=metodos_pago)  # Pasar los métodos de pago aquí
+    return render_template('crear-reserva.html', 
+                         canchas=canchas, 
+                         current_date=current_date, 
+                         horas_disponibles=horas_disponibles, 
+                         metodos_pago=metodos_pago)
 
 
 @main_routes.route('/usuarios')
 @admin_required
 def listaUsuarios():
 
-    usuarios = Usuario.query.all()  # Obtiene todos los usuarios
+    usuarios = db.session.query(Usuario).all()  # Obtiene todos los usuarios
     return render_template('usuarios-datatable.html', usuarios=usuarios)
 
 
@@ -246,7 +236,7 @@ def listaUsuarios():
 @admin_required
 def toggle_block(user_id):
 
-    usuario = Usuario.query.get(user_id)
+    usuario = db.session.get(Usuario, user_id)
 
     if usuario:
         # Cambiar el estado de 'isBlocked'
@@ -265,7 +255,7 @@ def toggle_block(user_id):
 def update_payment_status(pago_id):
 
     # Obtener el pago de la base de datos usando el ID
-    pago = Pago.query.get(pago_id)
+    pago = db.session.get(Pago, pago_id)
 
     if pago:
         # Obtener el nuevo estado del formulario
@@ -282,7 +272,6 @@ def update_payment_status(pago_id):
     else:
         flash('Pago no encontrado', 'danger')
 
-    # Redirigir a la página de pagos (o donde sea que quieras redirigir)
     return redirect(url_for('main.pagos'))
 
 
@@ -303,7 +292,7 @@ def crear_clase():
         status = request.form.get('status')
 
         # Obtener la cancha y el horario
-        cancha = Cancha.query.get(cancha_id)
+        cancha = db.session.get(Cancha, cancha_id)
         hora_inicio = datetime.strptime(hora_inicio, "%H:%M:%S").time()
         hora_fin_obj = (datetime.combine(datetime.today(), hora_inicio) + timedelta(hours=1)).time()
 
@@ -347,7 +336,7 @@ def crear_clase():
 def update_clase_status(clase_id):
 
     # Buscar la clase en la base de datos
-    clase = Clase.query.get(clase_id)
+    clase = db.session.get(Clase, clase_id)
 
     if clase:
         # Obtener el nuevo estado del formulario
@@ -370,7 +359,7 @@ def login():
         password = request.form['password']
 
         # Buscar al usuario por su correo electrónico
-        usuario = Usuario.query.filter_by(email=email).first()
+        usuario = db.session.query(Usuario).filter_by(email=email).first()
 
         if usuario and usuario.check_password(password):
             login_user(usuario)  # Inicia la sesión del usuario
@@ -386,6 +375,7 @@ def login():
             flash('Correo o contraseña incorrectos', 'danger')
     
     return render_template('login.html')
+
 
 @main_routes.route('/logout')
 @admin_required

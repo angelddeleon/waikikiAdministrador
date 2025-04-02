@@ -1,7 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
-from sqlalchemy import Numeric
+from sqlalchemy import Numeric, Enum
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -28,6 +29,7 @@ class Usuario(db.Model, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password, password)
 
+
 # Modelo para la tabla 'canchas'
 class Cancha(db.Model):
     __tablename__ = 'canchas'
@@ -39,6 +41,7 @@ class Cancha(db.Model):
 
     def __repr__(self):
         return f"<Cancha {self.name} - {self.price_per_hour}>"
+
 
 # Modelo para la tabla 'horarios'
 class Horario(db.Model):
@@ -56,20 +59,6 @@ class Horario(db.Model):
     def __repr__(self):
         return f"<Horario {self.date} - {self.start_time} to {self.end_time}>"
 
-# Modelo para la tabla 'reservaciones'
-class Reservacion(db.Model):
-    __tablename__ = 'reservaciones'
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    horario_id = db.Column(db.Integer, db.ForeignKey('horarios.id'), nullable=False)
-    status = db.Column(db.Enum('pendiente', 'confirmada', 'cancelada', 'terminada'), default='pendiente')
-
-    usuario = db.relationship('Usuario', backref=db.backref('reservaciones', lazy=True))
-    horario = db.relationship('Horario', backref=db.backref('reservaciones', lazy=True))
-
-    def __repr__(self):
-        return f"<Reservacion {self.id} - {self.status}>"
 
 # Modelo para la tabla 'pagos'
 class Pago(db.Model):
@@ -77,28 +66,60 @@ class Pago(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    reserva_id = db.Column(db.Integer, db.ForeignKey('reservaciones.id'), nullable=False)
     amount = db.Column(Numeric(10, 2), nullable=False)
-    payment_method = db.Column(db.Enum('efectivo', 'pago movil', 'zelle'), nullable=False)
+    payment_method = db.Column(db.Enum('efectivo', 'pago movil', 'zelle', 'punto de venta'), nullable=False)
     payment_proof = db.Column(db.String(255))
     payment_status = db.Column(db.Enum('pendiente', 'completado', 'rechazado'), default='pendiente')
+    payment_date = db.Column(db.TIMESTAMP, default=datetime.utcnow)
+    tasa_valor = db.Column(Numeric(10, 2), nullable=False)
 
     usuario = db.relationship('Usuario', backref=db.backref('pagos', lazy=True))
-    reservacion = db.relationship('Reservacion', backref=db.backref('pagos', lazy=True))
+    # Use back_populates to create explicit bi-directional relationship with 'Reservacion'
+    reservacion = db.relationship('Reservacion', back_populates='pago', uselist=False, foreign_keys='Reservacion.pago_id')
 
     def __repr__(self):
         return f"<Pago {self.id} - {self.amount} - {self.payment_status}>"
+
+# Modelo para la tabla 'reservaciones'
+class Reservacion(db.Model):
+    __tablename__ = 'reservaciones'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+    horario_id = db.Column(db.Integer, db.ForeignKey('horarios.id'), nullable=False)
+    pago_id = db.Column(db.Integer, db.ForeignKey('pagos.id'), nullable=True)
+    status = db.Column(db.Enum('pendiente', 'confirmada', 'cancelada', 'terminada'), default='pendiente')
+
+    usuario = db.relationship('Usuario', backref=db.backref('reservaciones', lazy=True))
+    horario = db.relationship('Horario', backref=db.backref('reservaciones', lazy=True))
+    # Use back_populates to create explicit bi-directional relationship with 'Pago'
+    pago = db.relationship('Pago', back_populates='reservacion', foreign_keys=[pago_id])
+
+    def __repr__(self):
+        return f"<Reservacion {self.id} - {self.status}>"
 
 # Modelo para la tabla 'clases'
 class Clase(db.Model):
     __tablename__ = 'clases'
 
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255), nullable=False)
-    horario_id = db.Column(db.Integer, db.ForeignKey('horarios.id', ondelete='CASCADE'), nullable=False)
+    horario_id = db.Column(db.Integer, db.ForeignKey('horarios.id'), nullable=False)
     status = db.Column(db.Enum('pendiente', 'realizada', 'cancelada'), default='pendiente')
 
     horario = db.relationship('Horario', backref='clases', lazy=True)
 
     def __repr__(self):
         return f"<Clase {self.nombre}, Status: {self.status}>"
+
+
+# Modelo para la tabla 'tasa'
+class Tasa(db.Model):
+    __tablename__ = 'tasa'
+
+    id = db.Column(db.Integer, primary_key=True, default=1)
+    monto = db.Column(Numeric(10, 2), nullable=False, comment='Valor de la tasa con 2 decimales')
+    fecha_actualizacion = db.Column(db.TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow, comment='Fecha de última actualización')
+
+    def __repr__(self):
+        return f"<Tasa {self.monto}>"
