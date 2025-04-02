@@ -165,20 +165,6 @@ def crear_reservacion():
 
             fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")
 
-            # Verificar disponibilidad de la cancha
-            horarios_ocupados = Horario.query.filter_by(
-                cancha_id=cancha_id,
-                date=fecha_datetime
-            ).filter(
-                (Horario.start_time < hora_fin_obj) & 
-                (Horario.end_time > hora_inicio_obj) &
-                (Horario.estado == 'ocupado')
-            ).all()
-
-            if horarios_ocupados:
-                flash('La cancha no está disponible en el horario seleccionado', 'danger')
-                return redirect(url_for('main.crear_reservacion'))
-
             # Crear el pago (único para todas las reservaciones)
             pago = Pago(
                 user_id=current_user.id,
@@ -191,69 +177,78 @@ def crear_reservacion():
             db.session.add(pago)
             db.session.flush()  # Para obtener el ID del pago
 
-            # Crear un horario continuo para toda la reserva
-            horario = Horario(
-                cancha_id=cancha_id,
-                date=fecha_datetime,
-                start_time=hora_inicio_obj,
-                end_time=hora_fin_obj,
-                estado='ocupado'
-            )
-            db.session.add(horario)
-            db.session.flush()
+            # Calcular cantidad de horas y segmentos
+            start_dt = datetime.combine(fecha_datetime, hora_inicio_obj)
+            end_dt = datetime.combine(fecha_datetime, hora_fin_obj)
+            total_horas = (end_dt - start_dt).seconds / 3600
 
-            # Crear la reservación principal asociada al pago
-            reservacion = Reservacion(
-                user_id=current_user.id,
-                horario_id=horario.id,
-                pago_id=pago.id,
-                status='confirmada'
-            )
-            db.session.add(reservacion)
+            # Crear reservaciones por cada hora
+            current_time = hora_inicio_obj
+            reservaciones_creadas = 0
 
-            # Si necesitas crear múltiples reservaciones de 1 hora (opcional)
-            # current_time = hora_inicio_obj
-            # while current_time < hora_fin_obj:
-            #     next_time = (datetime.combine(datetime.min, current_time) + timedelta(hours=1)).time()
-            #     if next_time > hora_fin_obj:
-            #         next_time = hora_fin_obj
-                
-            #     # Crear horario para cada segmento
-            #     horario_segmento = Horario(
-            #         cancha_id=cancha_id,
-            #         date=fecha_datetime,
-            #         start_time=current_time,
-            #         end_time=next_time,
-            #         estado='ocupado'
-            #     )
-            #     db.session.add(horario_segmento)
-            #     db.session.flush()
-                
-            #     # Crear reservación asociada al mismo pago
-            #     reservacion_segmento = Reservacion(
-            #         user_id=current_user.id,
-            #         horario_id=horario_segmento.id,
-            #         pago_id=pago.id,
-            #         status='confirmada'
-            #     )
-            #     db.session.add(reservacion_segmento)
-                
-            #     current_time = next_time
+            while current_time < hora_fin_obj:
+                # Calcular hora final del segmento (1 hora después)
+                next_time = (datetime.combine(datetime.min, current_time) + timedelta(hours=1)).time()
+                if next_time > hora_fin_obj:
+                    next_time = hora_fin_obj
+
+                # Verificar disponibilidad para este segmento
+                horario_ocupado = Horario.query.filter_by(
+                    cancha_id=cancha_id,
+                    date=fecha_datetime
+                ).filter(
+                    (Horario.start_time < next_time) & 
+                    (Horario.end_time > current_time) &
+                    (Horario.estado == 'ocupado')
+                ).first()
+
+                if horario_ocupado:
+                    db.session.rollback()
+                    flash(f'La cancha no está disponible entre {current_time.strftime("%H:%M")} y {next_time.strftime("%H:%M")}', 'danger')
+                    return redirect(url_for('main.crear_reservacion'))
+
+                # Crear horario para el segmento actual
+                horario = Horario(
+                    cancha_id=cancha_id,
+                    date=fecha_datetime,
+                    start_time=current_time,
+                    end_time=next_time,
+                    estado='ocupado'
+                )
+                db.session.add(horario)
+                db.session.flush()
+
+                # Crear reservación asociada al mismo pago
+                reservacion = Reservacion(
+                    user_id=current_user.id,
+                    horario_id=horario.id,
+                    pago_id=pago.id,
+                    status='confirmada'
+                )
+                db.session.add(reservacion)
+                reservaciones_creadas += 1
+
+                # Avanzar al siguiente segmento
+                current_time = next_time
+
+            if reservaciones_creadas == 0:
+                db.session.rollback()
+                flash('No se pudo crear ninguna reservación', 'danger')
+                return redirect(url_for('main.crear_reservacion'))
 
             db.session.commit()
-            flash('Reserva creada con éxito', 'success')
+            flash(f'Se crearon {reservaciones_creadas} reservaciones con éxito', 'success')
             return redirect(url_for('main.listaReservas'))
 
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al crear la reserva: {str(e)}', 'danger')
+            flash(f'Error al crear las reservas: {str(e)}', 'danger')
             return redirect(url_for('main.crear_reservacion'))
 
     return render_template('crear-reserva.html', 
                          canchas=canchas, 
                          current_date=current_date, 
                          metodos_pago=metodos_pago)
-
 
 @main_routes.route('/usuarios')
 @admin_required
