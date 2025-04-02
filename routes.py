@@ -145,6 +145,14 @@ def crear_reservacion():
     metodos_pago = ['efectivo', 'pago movil', 'zelle', 'punto de venta']
     tasa = Tasa.query.first()
 
+    now = datetime.now()
+    current_date = now.date()
+    
+    # Si la hora actual es >= 10:00 AM, mostrar el día siguiente como fecha mínima
+    min_date = current_date
+    if now.hour >= 10:
+        min_date = current_date + timedelta(days=1)
+
     if request.method == 'POST':
         try:
             # Obtener datos del formulario
@@ -248,12 +256,12 @@ def crear_reservacion():
     return render_template('crear-reserva.html', 
                          canchas=canchas, 
                          current_date=current_date, 
-                         metodos_pago=metodos_pago)
+                         metodos_pago=metodos_pago,
+                         min_date=min_date)
 
 @main_routes.route('/usuarios')
 @admin_required
 def listaUsuarios():
-
     usuarios = db.session.query(Usuario).all()  # Obtiene todos los usuarios
     return render_template('usuarios-datatable.html', usuarios=usuarios)
 
@@ -302,62 +310,90 @@ def update_payment_status(pago_id):
 
     return redirect(url_for('main.pagos'))
 
-
 @main_routes.route('/crear-clase', methods=['GET', 'POST'])
 @admin_required
 def crear_clase():
-
-    horas_disponibles = []
-    canchas = Cancha.query.all()  # Obtener todas las canchas de la base de datos
-    current_date = datetime.today().date()
+    canchas = Cancha.query.all()
+    now = datetime.now()
+    current_date = now.date()
+    min_date = current_date if now.hour < 10 else current_date + timedelta(days=1)
 
     if request.method == 'POST':
-        # Obtener datos del formulario
-        nombre = request.form.get('nombre')
-        cancha_id = request.form.get('cancha')
-        fecha = request.form.get('fecha')
-        hora_inicio = request.form.get('hora_inicio')
-        status = request.form.get('status')
-
-        # Obtener la cancha y el horario
-        cancha = db.session.get(Cancha, cancha_id)
-        hora_inicio = datetime.strptime(hora_inicio, "%H:%M:%S").time()
-        hora_fin_obj = (datetime.combine(datetime.today(), hora_inicio) + timedelta(hours=1)).time()
-
-        # Crear el horario ocupado
-        fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")  # Cambiado a "%Y-%m-%d"
-        horario = Horario(
-            cancha_id=cancha.id,
-            date=fecha_datetime,
-            start_time=hora_inicio,
-            end_time=hora_fin_obj.strftime('%H:%M:%S'),  # Almacenar hora de fin
-            estado='ocupado'  # Cambiar el estado a 'ocupado'
-        )
-
         try:
-            # Agregar el horario a la base de datos
-            db.session.add(horario)
-            db.session.commit()
+            nombre_profesor = request.form.get('nombre_profesor')
+            cancha_id = request.form.get('cancha')
+            fecha_str = request.form.get('fecha')
+            hora_inicio_str = request.form.get('hora_inicio')
+            hora_fin_str = request.form.get('hora_final')
 
-            # Crear la clase y asociarla con el horario creado
-            clase = Clase(
-                nombre=nombre,
-                horario_id=horario.id,  # Asignar el ID del horario creado
-                status=status
-            )
-            db.session.add(clase)
-            db.session.commit()
+            fecha_datetime = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+            hora_inicio_obj = datetime.strptime(hora_inicio_str, "%H:%M:%S").time()
+            hora_fin_obj = datetime.strptime(hora_fin_str, "%H:%M:%S").time()
 
-            flash('Clase creada con éxito', 'success')
+            if hora_fin_obj <= hora_inicio_obj:
+                flash('La hora de finalización debe ser posterior a la hora de inicio.', 'danger')
+                return redirect(url_for('main.crear_clase'))
+
+            start_datetime = datetime.combine(fecha_datetime, hora_inicio_obj)
+            end_datetime = datetime.combine(fecha_datetime, hora_fin_obj)
+
+            current_time = hora_inicio_obj
+            clases_creadas = 0
+
+            while current_time < hora_fin_obj:
+                next_time = (datetime.combine(datetime.min, current_time) + timedelta(hours=1)).time()
+                if next_time > hora_fin_obj:
+                    next_time = hora_fin_obj
+
+                # Verificar disponibilidad para este segmento
+                horario_ocupado = Horario.query.filter_by(
+                    cancha_id=cancha_id,
+                    date=fecha_datetime
+                ).filter(
+                    (Horario.start_time < next_time) &
+                    (Horario.end_time > current_time) &
+                    (Horario.estado == 'ocupado')
+                ).first()
+
+                if horario_ocupado:
+                    db.session.rollback()
+                    flash(f'La cancha no está disponible entre {current_time.strftime("%H:%M")} y {next_time.strftime("%H:%M")}', 'danger')
+                    return redirect(url_for('main.crear_clase'))
+
+                # Crear horario para el segmento actual
+                horario = Horario(
+                    cancha_id=cancha_id,
+                    date=fecha_datetime,
+                    start_time=current_time,
+                    end_time=next_time,
+                    estado='ocupado'
+                )
+                db.session.add(horario)
+                db.session.flush()
+
+                # Crear la clase asociada al horario
+                clase = Clase(
+                    nombre=nombre_profesor,
+                    horario_id=horario.id,
+                    status='pendiente'
+                )
+                db.session.add(clase)
+                clases_creadas += 1
+
+                # Avanzar al siguiente segmento
+                current_time = next_time
+
+            db.session.commit()
+            flash(f'Se crearon {clases_creadas} horarios para la clase con éxito', 'success')
             return redirect(url_for('main.clases'))
 
+        except ValueError:
+            flash('Formato de fecha u hora incorrecto.', 'danger')
         except Exception as e:
-            db.session.rollback()  # Revertir los cambios si ocurre un error
+            db.session.rollback()
             flash(f'Error al crear la clase: {str(e)}', 'danger')
-            return redirect(url_for('main.crear_clase'))
 
-    return render_template('crear-clase.html', canchas=canchas, current_date=current_date, horas_disponibles=horas_disponibles)
-
+    return render_template('crear-clase.html', canchas=canchas, min_date=min_date)
 
 @main_routes.route('/update_clase_status/<int:clase_id>', methods=['POST'])
 @admin_required

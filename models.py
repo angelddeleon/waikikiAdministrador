@@ -97,9 +97,6 @@ class Reservacion(db.Model):
     def __repr__(self):
         return f"<Reservacion {self.id} - {self.status}>"
 
-
-
-# Modelo para la tabla 'clases'
 class Clase(db.Model):
     __tablename__ = 'clases'
 
@@ -108,7 +105,8 @@ class Clase(db.Model):
     horario_id = db.Column(db.Integer, db.ForeignKey('horarios.id'), nullable=False)
     status = db.Column(db.Enum('pendiente', 'realizada', 'cancelada'), default='pendiente')
 
-    horario = db.relationship('Horario', backref='clases', lazy=True)
+    # Relación con horario (una clase tiene un solo horario)
+    horario = db.relationship('Horario', backref='clase', lazy=True)
 
     def __repr__(self):
         return f"<Clase {self.nombre}, Status: {self.status}>"

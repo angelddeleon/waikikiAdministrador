@@ -16,60 +16,76 @@
     <title>Waikiki</title>
 </head>
 
-<body>
+<body class="bg-light">
 
     {% include 'partials/sidebar.html' %}
+    
     <div class="page-wrapper">
         <div class="page-content">
-            <h1>Crear Reservación</h1>
-
-            <form method="POST" action="{{ url_for('main.crear_reservacion') }}" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="cancha">Seleccionar Cancha</label>
-                    <select id="cancha" name="cancha" class="form-control" required>
-                        <option value="">Seleccione una cancha</option>
-                        {% for cancha in canchas %}
-                            <option value="{{ cancha.id }}" data-precio="{{ cancha.price_per_hour }}">{{ cancha.name }} - ${{ cancha.price_per_hour }} por hora</option>
-                        {% endfor %}
-                    </select>
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="mb-0">Crear Nueva Reservación</h4>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <form method="POST" action="{{ url_for('main.crear_reservacion') }}" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cancha" class="form-label">Seleccionar Cancha</label>
+                                <select class="form-select" id="cancha" name="cancha" required>
+                                    <option value="">Seleccione una cancha</option>
+                                    {% for cancha in canchas %}
+                                        <option value="{{ cancha.id }}" data-precio="{{ cancha.price_per_hour }}">{{ cancha.name }} - ${{ cancha.price_per_hour }} por hora</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha" class="form-label">Fecha</label>
+                                <input type="date" class="form-control" id="fecha" name="fecha" min="{{ min_date.strftime('%Y-%m-%d') }}" value="{{ min_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="hora_inicio" class="form-label">Hora de Inicio</label>
+                                <select class="form-select" id="hora_inicio" name="hora_inicio" required>
+                                    <option value="">Seleccione hora</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="hora_final" class="form-label">Hora de Finalización</label>
+                                <select class="form-select" id="hora_final" name="hora_final" required>
+                                    <option value="">Seleccione hora</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="monto" class="form-label">Monto ($)</label>
+                                <input type="number" class="form-control" id="monto" name="monto" step="0.01" min="0" readonly required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="metodo_pago" class="form-label">Método de Pago</label>
+                                <select class="form-select" id="metodo_pago" name="metodo_pago" required>
+                                    {% for metodo in metodos_pago %}
+                                        <option value="{{ metodo }}">{{ metodo|capitalize }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <button type="submit" class="btn btn-primary px-4">Reservar</button>
+                        </div>
+                    </form>
                 </div>
-
-                <div class="form-group">
-                    <label for="fecha">Seleccionar Fecha</label>
-                    <input type="date" id="fecha" name="fecha" class="form-control" min="{{ current_date }}" value="{{ current_date }}" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="hora_inicio">Hora de Inicio</label>
-                    <select id="hora_inicio" name="hora_inicio" class="form-control" required>
-                        <option value="">Seleccione una hora de inicio</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="hora_final">Hora de Final</label>
-                    <select id="hora_final" name="hora_final" class="form-control" required>
-                        <option value="">Seleccione una hora de final</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="monto">Monto ($)</label>
-                    <input type="number" id="monto" name="monto" class="form-control" step="0.01" min="0" readonly required>
-                </div>
-
-                <div class="form-group">
-                    <label for="metodo_pago">Método de Pago</label>
-                    <select id="metodo_pago" name="metodo_pago" class="form-control" required>
-                        {% for metodo in metodos_pago %}
-                            <option value="{{ metodo }}">{{ metodo|capitalize }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <button type="submit" class="btn btn-primary my-3">Reservar</button>
-            </form>
-
+            </div>
         </div>
     </div>
 
@@ -114,17 +130,17 @@
 
                 if (cancha_id && fecha) {
                     $.ajax({
-                        url: '/obtener_horas_disponibles',  // Llamada a la ruta que obtiene las horas disponibles
+                        url: '/obtener_horas_disponibles',
                         method: 'GET',
                         data: { cancha_id: cancha_id, fecha: fecha },
                         success: function(response) {
                             // Limpiar el select de horas inicio
                             $('#hora_inicio').empty();
-                            $('#hora_inicio').append('<option value="">Seleccione una hora de inicio</option>');
+                            $('#hora_inicio').append('<option value="">Seleccione hora</option>');
 
                             // Recorrer las horas disponibles y agregarlas al select
                             response.forEach(function(hora) {
-                                var horaFormatoAMPM = convertirHoraAMPM(hora.start_time); // Convierte la hora a formato AM/PM
+                                var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
                                 $('#hora_inicio').append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
                             });
                         },
@@ -137,22 +153,20 @@
 
             // Función que se ejecuta cuando cambia la hora de inicio
             $('#hora_inicio').change(function() {
-                var hora_inicio = $(this).val();  // Obtenemos la hora de inicio seleccionada
+                var hora_inicio = $(this).val();
                 if (hora_inicio) {
-                    var hora_inicio_24 = hora_inicio;  // Hora de inicio en formato HH:mm:ss directamente
-
                     $.ajax({
-                        url: '/obtener_horas_disponibles',  // Llamada a la ruta que obtiene las horas disponibles
+                        url: '/obtener_horas_disponibles',
                         method: 'GET',
                         data: { cancha_id: $('#cancha').val(), fecha: $('#fecha').val() },
                         success: function(response) {
                             // Limpiar el select de horas final
                             $('#hora_final').empty();
-                            $('#hora_final').append('<option value="">Seleccione una hora de final</option>');
+                            $('#hora_final').append('<option value="">Seleccione hora</option>');
 
                             // Recorrer las horas disponibles y agregar solo las mayores que la hora de inicio
                             response.forEach(function(hora) {
-                                if (hora.start_time > hora_inicio_24) {
+                                if (hora.start_time > hora_inicio) {
                                     var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
                                     $('#hora_final').append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
                                 }
@@ -188,6 +202,5 @@
             });
         });
     </script>
-
 </body>
 </html>
