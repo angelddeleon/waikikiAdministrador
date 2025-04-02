@@ -5,11 +5,8 @@ from config import Config
 from routes import main_routes
 from models import db, Usuario, Pago, Reservacion, Horario, Cancha, Clase
 from functools import wraps
-from werkzeug.security import generate_password_hash
 
-# Generar un hash para la contraseña
-hashed_password = generate_password_hash('123456')
-print("contraseña " + hashed_password)
+
 
 # Inicializar la aplicación Flask
 app = Flask(__name__)

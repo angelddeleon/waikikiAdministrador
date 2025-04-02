@@ -15,7 +15,8 @@
 
         .login-container .image-section {
             flex: 1;
-            background-image: url('https://via.placeholder.com/600x800'); /* Puedes cambiar esta URL por la de tu imagen */
+            height: 100%;
+            background-image: url('{{ url_for("static", filename="assets/imagenes/imagenPrincipal.webp") }}');
             background-size: cover;
             background-position: center;
         }
@@ -34,6 +35,12 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Estilo para la imagen del logo */
+        .form-section img {
+            margin-bottom: 8px;
+            height: 80px;
         }
 
         /* Aseguramos que el formulario se vea bien en móviles */
@@ -57,13 +64,11 @@
 
     <div class="login-container">
         <!-- Sección de imagen -->
-
-          <img class="image-section" src="static/assets/imagenes/imagenPrincipal.webp" alt="">
-
+        <div class="image-section"></div> <!-- La imagen se gestiona como fondo aquí -->
 
         <!-- Sección de formulario -->
         <div class="form-section" style="background-color: white; display: flex; flex-direction: column;">
-            <img src="static/assets/imagenes/Logo-Waikiki-NEGRO.png" alt="" style="margin-bottom: 8px; height: 80px;">
+            <img src="{{ url_for('static', filename='assets/imagenes/Logo-Waikiki-NEGRO.png') }}" alt="imagen-logo" style="margin-bottom: 8px; height: 80px;">
             <div class="login-form">
                 <h3 class="text-center mb-4">Iniciar Sesión</h3>
                 <form method="POST" action="{{ url_for('main.login') }}">
@@ -81,7 +86,6 @@
                         <button type="submit" class="btn btn-primary">Iniciar sesión</button>
                     </div>
                 </form>
-
             </div>
         </div>
     </div>
