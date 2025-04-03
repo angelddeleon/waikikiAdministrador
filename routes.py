@@ -5,6 +5,8 @@ from flask_login import login_user, login_required, current_user, logout_user
 from functools import wraps
 import pytz
 
+
+
 main_routes = Blueprint('main', __name__)
 
 # Decorador para verificar si el usuario es admin
@@ -18,10 +20,33 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def actualizar_reservaciones_terminadas():
+    # Obtener todas las reservaciones
+    reservaciones = Reservacion.query.filter(Reservacion.status != 'terminada').all()
+
+    for reservacion in reservaciones:
+        horario = Horario.query.get(reservacion.horario_id)
+        if horario:
+            now = datetime.now().time()  # Hora actual
+            # Si la hora de finalización ya pasó y el estado no es 'terminada'
+            if horario.end_time < now:
+                reservacion.status = 'terminada'
+                db.session.add(reservacion)
+
+    db.session.commit()  # Guardar todos los cambios realizados
+
+def convertir_hora_a_am_pm(hora_str):
+    """Convierte una hora en formato 24 horas a formato 12 horas con AM/PM."""
+    hora_obj = datetime.strptime(hora_str, "%H:%M:%S")
+    return hora_obj.strftime("%I:%M %p")  # Formato AM/PM, ejemplo: '08:00 AM'
+
+
 
 @main_routes.route('/reservas')
 @admin_required
 def listaReservas():
+    actualizar_reservaciones_terminadas()
+
     # Usamos un join para obtener las reservaciones con los usuarios y horarios relacionados
     reservas = db.session.query(Reservacion).join(Usuario).join(Horario).all()
 
@@ -81,6 +106,7 @@ def pagos():
         flash(f'Error al obtener los pagos: {str(e)}', 'danger')
         return render_template('pagos-datatable.html', pagos=[])
 
+
 @main_routes.route('/obtener_horas_disponibles', methods=['GET'])
 def obtener_horas_disponibles():
     # Obtener los parámetros del request
@@ -103,17 +129,12 @@ def obtener_horas_disponibles():
         # Obtener la hora actual en la zona horaria de Venezuela
         hora_actual_vzla = datetime.now(vzla_timezone).strftime("%H:%M:%S")
 
-        hora_str = "10:00:00"
-        hora_obj = datetime.strptime(hora_str, "%H:%M:%S").time()
-
-        # Convertir la hora actual a formato 8:00:00 (HH:mm:ss)
-        hora_formateada = hora_obj.strftime("%H:%M:%S")
-
-        print("HORAAAA " + hora_actual_vzla)  # Ejemplo de salida: 08:15:30
-
+        # Definir la fecha actual
+        dia_actual = datetime.today().date()
 
         # Obtener los horarios ocupados para la cancha y fecha específicas
         horarios_ocupados = Horario.query.filter_by(cancha_id=cancha_id, date=fecha, estado='ocupado').all()
+
         # Solo extraemos las horas de inicio en el formato HH:mm:ss
         horas_ocupadas = [ho.start_time.strftime('%H:%M:%S') for ho in horarios_ocupados]
 
@@ -122,20 +143,32 @@ def obtener_horas_disponibles():
         hora_inicio = 8  # 8 AM
         hora_fin = 23  # 10 PM
 
-        for hora in range(hora_inicio, hora_fin):
-            hora_inicio_horario = time(hour=hora, minute=0, second=0).strftime('%H:%M:%S')  # Formato HH:mm:ss
+        # Si la fecha no es el día actual, mostramos todos los horarios disponibles
+        if fecha != dia_actual:
+            for hora in range(hora_inicio, hora_fin):
+                hora_inicio_horario = time(hour=hora, minute=0, second=0).strftime('%H:%M:%S')  # Formato HH:mm:ss
+                if hora_inicio_horario not in horas_ocupadas:
+                    horarios_disponibles.append({
+                        'start_time': hora_inicio_horario
+                    })
 
-            # Verificar si el horario está ocupado
-            if hora_inicio_horario not in horas_ocupadas and hora_inicio_horario > hora_actual_vzla:
-                horarios_disponibles.append({
-                    'start_time': hora_inicio_horario
-                })
+        # Si es el día actual, verificamos si la hora actual ha pasado
+        else:
+            for hora in range(hora_inicio, hora_fin):
+                hora_inicio_horario = time(hour=hora, minute=0, second=0).strftime('%H:%M:%S')  # Formato HH:mm:ss
+                if hora_inicio_horario > hora_actual_vzla and hora_inicio_horario not in horas_ocupadas:
+                    horarios_disponibles.append({
+                        'start_time': hora_inicio_horario
+                    })
 
         return jsonify(horarios_disponibles)
 
     except Exception as e:
         print(f"Error al obtener horarios disponibles: {e}")
         return jsonify({"message": "Error al obtener los horarios", "error": str(e)}), 500
+
+    
+from flask import flash, redirect, url_for, render_template
 
 @main_routes.route('/crear-reserva', methods=['GET', 'POST'])
 @admin_required
@@ -147,33 +180,57 @@ def crear_reservacion():
 
     now = datetime.now()
     current_date = now.date()
-    
-    # Si la hora actual es >= 10:00 AM, mostrar el día siguiente como fecha mínima
+
     min_date = current_date
-    if now.hour >= 10:
+    if now.hour >= 23:  # Mostrar el día siguiente si la hora actual es mayor o igual a las 23:00
         min_date = current_date + timedelta(days=1)
 
     if request.method == 'POST':
         try:
-            # Obtener datos del formulario
             cancha_id = request.form.get('cancha')
             fecha = request.form.get('fecha')
-            hora_inicio = request.form.get('hora_inicio')  # Formato HH:MM:SS
-            hora_fin = request.form.get('hora_final')      # Formato HH:MM:SS
+            hora_inicio = request.form.get('hora_inicio')
+            hora_fin = request.form.get('hora_final')
             metodo_pago = request.form.get('metodo_pago')
-            monto = float(request.form.get('monto'))
+            monto = request.form.get('monto')
 
-            # Convertir fechas y horas
-            try:
-                hora_inicio_obj = datetime.strptime(hora_inicio, "%H:%M:%S").time()
-                hora_fin_obj = datetime.strptime(hora_fin, "%H:%M:%S").time()
-            except ValueError:
-                flash('Formato de hora incorrecto. Use HH:MM:SS', 'danger')
+            # Validaciones básicas
+            if not all([cancha_id, fecha, hora_inicio, hora_fin, metodo_pago, monto]):
+                flash('Todos los campos son obligatorios', 'error')
                 return redirect(url_for('main.crear_reservacion'))
 
+            try:
+                monto = float(monto)
+                if monto <= 0:
+                    flash('El monto debe ser mayor que cero', 'error')
+                    return redirect(url_for('main.crear_reservacion'))
+            except ValueError:
+                flash('Monto inválido', 'error')
+                return redirect(url_for('main.crear_reservacion'))
+
+            # Convertir horas
+            hora_inicio_obj = datetime.strptime(hora_inicio, "%H:%M:%S").time()
+            hora_fin_obj = datetime.strptime(hora_fin, "%H:%M:%S").time()
             fecha_datetime = datetime.strptime(fecha, "%Y-%m-%d")
 
-            # Crear el pago (único para todas las reservaciones)
+            # Validar que la hora final sea mayor que la hora inicial
+            if hora_fin_obj <= hora_inicio_obj:
+                flash('La hora final debe ser mayor que la hora de inicio', 'error')
+                return redirect(url_for('main.crear_reservacion'))
+
+            # Validar que la fecha no sea en el pasado
+            if fecha_datetime.date() < current_date:
+                flash('No se pueden hacer reservaciones en fechas pasadas', 'error')
+                return redirect(url_for('main.crear_reservacion'))
+
+            # Validar que la fecha y hora no sean en el mismo día pero hora pasada
+            if fecha_datetime.date() == current_date:
+                hora_actual = now.time()
+                if hora_inicio_obj < hora_actual:
+                    flash('No se pueden hacer reservaciones en horas pasadas para el día actual', 'error')
+                    return redirect(url_for('main.crear_reservacion'))
+
+            # Crear el pago
             pago = Pago(
                 user_id=current_user.id,
                 amount=monto,
@@ -183,39 +240,43 @@ def crear_reservacion():
                 tasa_valor=tasa.monto
             )
             db.session.add(pago)
-            db.session.flush()  # Para obtener el ID del pago
-
-            # Calcular cantidad de horas y segmentos
-            start_dt = datetime.combine(fecha_datetime, hora_inicio_obj)
-            end_dt = datetime.combine(fecha_datetime, hora_fin_obj)
-            total_horas = (end_dt - start_dt).seconds / 3600
+            db.session.flush()
 
             # Crear reservaciones por cada hora
-            current_time = hora_inicio_obj
             reservaciones_creadas = 0
-
+            current_time = hora_inicio_obj
             while current_time < hora_fin_obj:
-                # Calcular hora final del segmento (1 hora después)
                 next_time = (datetime.combine(datetime.min, current_time) + timedelta(hours=1)).time()
-                if next_time > hora_fin_obj:
-                    next_time = hora_fin_obj
 
                 # Verificar disponibilidad para este segmento
                 horario_ocupado = Horario.query.filter_by(
                     cancha_id=cancha_id,
                     date=fecha_datetime
                 ).filter(
-                    (Horario.start_time < next_time) & 
+                    (Horario.start_time < next_time) &
                     (Horario.end_time > current_time) &
                     (Horario.estado == 'ocupado')
                 ).first()
 
                 if horario_ocupado:
                     db.session.rollback()
-                    flash(f'La cancha no está disponible entre {current_time.strftime("%H:%M")} y {next_time.strftime("%H:%M")}', 'danger')
+                    # Convertir a formato AM/PM manualmente
+                    def format_ampm(time_obj):
+                        hora = time_obj.hour
+                        minutos = time_obj.minute
+                        ampm = 'AM' if hora < 12 else 'PM'
+                        hora_12 = hora if hora <= 12 else hora - 12
+                        if hora_12 == 0:  # Medianoche es 12 AM
+                            hora_12 = 12
+                        return f"{hora_12}:{minutos:02d} {ampm}"
+                    
+                    hora_inicio_ampm = format_ampm(current_time)
+                    hora_fin_ampm = format_ampm(next_time)
+                    
+                    flash(f'La cancha no está disponible entre {hora_inicio_ampm} y {hora_fin_ampm}', 'error')
                     return redirect(url_for('main.crear_reservacion'))
 
-                # Crear horario para el segmento actual
+                # Crear horario y reservación
                 horario = Horario(
                     cancha_id=cancha_id,
                     date=fecha_datetime,
@@ -226,7 +287,6 @@ def crear_reservacion():
                 db.session.add(horario)
                 db.session.flush()
 
-                # Crear reservación asociada al mismo pago
                 reservacion = Reservacion(
                     user_id=current_user.id,
                     horario_id=horario.id,
@@ -236,21 +296,17 @@ def crear_reservacion():
                 db.session.add(reservacion)
                 reservaciones_creadas += 1
 
-                # Avanzar al siguiente segmento
                 current_time = next_time
 
-            if reservaciones_creadas == 0:
-                db.session.rollback()
-                flash('No se pudo crear ninguna reservación', 'danger')
-                return redirect(url_for('main.crear_reservacion'))
-
             db.session.commit()
+
+            # Mensaje de éxito
             flash(f'Se crearon {reservaciones_creadas} reservaciones con éxito', 'success')
-            return redirect(url_for('main.listaReservas'))
+            return redirect(url_for('main.crear_reservacion'))
 
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al crear las reservas: {str(e)}', 'danger')
+            flash(f'Error al crear las reservas: {str(e)}', 'error')
             return redirect(url_for('main.crear_reservacion'))
 
     return render_template('crear-reserva.html', 
@@ -286,10 +342,10 @@ def toggle_block(user_id):
     return redirect(url_for('main.listaUsuarios'))
 
 
+
 @main_routes.route('/update_payment_status/<int:pago_id>', methods=['POST'])
 @admin_required
 def update_payment_status(pago_id):
-
     # Obtener el pago de la base de datos usando el ID
     pago = db.session.get(Pago, pago_id)
 
@@ -301,8 +357,41 @@ def update_payment_status(pago_id):
             # Actualizar el estado del pago
             pago.payment_status = new_status
             db.session.commit()  # Guardar los cambios en la base de datos
-            
-            flash('Estado del pago actualizado con éxito', 'success')
+
+            # Si el pago fue confirmado, cambiar el estado de las reservaciones a confirmada
+            if new_status == 'completado':
+                reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()
+                for reservacion in reservaciones:
+                    reservacion.status = 'confirmada'
+                    db.session.add(reservacion)
+
+            # Si el pago fue cancelado, cambiar el estado de las reservaciones a cancelada y los horarios a disponible
+            elif new_status == 'rechazado':
+                reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()
+                for reservacion in reservaciones:
+                    reservacion.status = 'cancelada'
+                    db.session.add(reservacion)
+
+                    # Cambiar el estado de los horarios a disponible
+                    horario = Horario.query.get(reservacion.horario_id)
+                    if horario:
+                        horario.estado = 'disponible'
+                        db.session.add(horario)
+
+            # Verificar si las reservaciones ya pasaron su hora de finalización
+            reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()
+            for reservacion in reservaciones:
+                horario = Horario.query.get(reservacion.horario_id)
+                if horario:
+                    # Si la hora actual es mayor a la hora de finalización y el estado de la reservación no es terminada
+                    now = datetime.now().time()  # Hora actual
+                    if horario.end_time < now and reservacion.status != 'terminada':
+                        reservacion.status = 'terminada'
+                        db.session.add(reservacion)
+
+            db.session.commit()  # Guardar todos los cambios realizados
+
+            flash('Estado del pago y las reservaciones actualizado con éxito', 'success')
         else:
             flash('Estado de pago no válido', 'danger')
     else:
@@ -310,13 +399,14 @@ def update_payment_status(pago_id):
 
     return redirect(url_for('main.pagos'))
 
+
 @main_routes.route('/crear-clase', methods=['GET', 'POST'])
 @admin_required
 def crear_clase():
     canchas = Cancha.query.all()
     now = datetime.now()
     current_date = now.date()
-    min_date = current_date if now.hour < 10 else current_date + timedelta(days=1)
+    min_date = current_date if now.hour < 23 else current_date + timedelta(days=1)
 
     if request.method == 'POST':
         try:
@@ -326,12 +416,17 @@ def crear_clase():
             hora_inicio_str = request.form.get('hora_inicio')
             hora_fin_str = request.form.get('hora_final')
 
+            # Validaciones básicas
+            if not all([nombre_profesor, cancha_id, fecha_str, hora_inicio_str, hora_fin_str]):
+                flash('Todos los campos son obligatorios', 'error')
+                return redirect(url_for('main.crear_clase'))
+
             fecha_datetime = datetime.strptime(fecha_str, "%Y-%m-%d").date()
             hora_inicio_obj = datetime.strptime(hora_inicio_str, "%H:%M:%S").time()
             hora_fin_obj = datetime.strptime(hora_fin_str, "%H:%M:%S").time()
 
             if hora_fin_obj <= hora_inicio_obj:
-                flash('La hora de finalización debe ser posterior a la hora de inicio.', 'danger')
+                flash('La hora de finalización debe ser posterior a la hora de inicio.', 'error')
                 return redirect(url_for('main.crear_clase'))
 
             start_datetime = datetime.combine(fecha_datetime, hora_inicio_obj)
@@ -345,7 +440,7 @@ def crear_clase():
                 if next_time > hora_fin_obj:
                     next_time = hora_fin_obj
 
-                # Verificar disponibilidad para este segmento
+                # Verificar disponibilidad
                 horario_ocupado = Horario.query.filter_by(
                     cancha_id=cancha_id,
                     date=fecha_datetime
@@ -357,10 +452,10 @@ def crear_clase():
 
                 if horario_ocupado:
                     db.session.rollback()
-                    flash(f'La cancha no está disponible entre {current_time.strftime("%H:%M")} y {next_time.strftime("%H:%M")}', 'danger')
+                    flash(f'La cancha no está disponible entre {current_time.strftime("%H:%M")} y {next_time.strftime("%H:%M")}', 'error')
                     return redirect(url_for('main.crear_clase'))
 
-                # Crear horario para el segmento actual
+                # Crear horario
                 horario = Horario(
                     cancha_id=cancha_id,
                     date=fecha_datetime,
@@ -371,7 +466,7 @@ def crear_clase():
                 db.session.add(horario)
                 db.session.flush()
 
-                # Crear la clase asociada al horario
+                # Crear clase
                 clase = Clase(
                     nombre=nombre_profesor,
                     horario_id=horario.id,
@@ -380,18 +475,24 @@ def crear_clase():
                 db.session.add(clase)
                 clases_creadas += 1
 
-                # Avanzar al siguiente segmento
                 current_time = next_time
 
             db.session.commit()
+            
+            # En lugar de hacer redirect inmediato, renderizamos la plantilla con el mensaje
             flash(f'Se crearon {clases_creadas} horarios para la clase con éxito', 'success')
-            return redirect(url_for('main.clases'))
+            return render_template('crear-clase.html', 
+                                canchas=canchas, 
+                                min_date=min_date,
+                                success_message=f'Se crearon {clases_creadas} horarios para la clase con éxito')
 
         except ValueError:
-            flash('Formato de fecha u hora incorrecto.', 'danger')
+            flash('Formato de fecha u hora incorrecto.', 'error')
+            return redirect(url_for('main.crear_clase'))
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al crear la clase: {str(e)}', 'danger')
+            flash(f'Error al crear la clase: {str(e)}', 'error')
+            return redirect(url_for('main.crear_clase'))
 
     return render_template('crear-clase.html', canchas=canchas, min_date=min_date)
 
@@ -416,28 +517,68 @@ def update_clase_status(clase_id):
     return redirect(url_for('main.clases'))
 
 
+@main_routes.route('/tasa', methods=['GET', 'POST'])
+@admin_required
+def tasa_bs():
+    tasa = Tasa.query.first()  # Obtener la tasa actual de la base de datos
+
+    if tasa:
+        # Formateamos la fecha y hora (sin segundos) a formato YYYY-MM-DD y hora en formato de 12 horas con AM/PM
+        tasa_fecha_actualizacion = tasa.fecha_actualizacion.strftime('%Y-%m-%d %I:%M %p')  # Fecha y hora en formato 12 horas
+
+    if request.method == 'POST':
+        try:
+            nuevo_monto = request.form['monto']
+            if tasa:
+                tasa.monto = float(nuevo_monto)
+                db.session.commit()
+                flash('Tasa actualizada con éxito', 'success')
+            else:
+                flash('No se encontró la tasa', 'danger')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar la tasa: {str(e)}', 'danger')
+        
+        return redirect(url_for('main.tasa_bs'))  # Redirigir a la misma vista
+
+    return render_template('tasa.html', tasa=tasa, tasa_fecha_actualizacion=tasa_fecha_actualizacion)
+
 @main_routes.route('/', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
+    try:
+        if request.method == 'POST':
+            email = request.form['email']
+            password = request.form['password']
 
-        # Buscar al usuario por su correo electrónico
-        usuario = db.session.query(Usuario).filter_by(email=email).first()
+            # Buscar al usuario por su correo electrónico
+            usuario = db.session.query(Usuario).filter_by(email=email).first()
 
-        if usuario and usuario.check_password(password):
-            login_user(usuario)  # Inicia la sesión del usuario
-            flash('Inicio de sesión exitoso', 'success')
+            # Si el usuario existe y la contraseña es correcta
+            if usuario:
+                if usuario.check_password(password):
+                    # Verificar si el usuario está bloqueado
+                    if usuario.isBlocked:
+                        flash('Tu cuenta está bloqueada. No puedes iniciar sesión.', 'danger')
+                        return redirect(url_for('main.login'))
 
-            # Verificamos si el usuario tiene el rol de admin
-            if usuario.role == 'admin':
-                return redirect(url_for('main.listaReservas'))  # Página de administración
+                    login_user(usuario)  # Inicia la sesión del usuario
+                    flash('Inicio de sesión exitoso', 'success')
+
+                    # Redirigir a la página correspondiente según el rol del usuario
+                    if usuario.role == 'admin':
+                        return redirect(url_for('main.listaReservas'))  # Página de administración
+                    else:
+                        flash('No tienes acceso de administrador', 'danger')
+                        return redirect(url_for('main.login'))
+                else:
+                    flash('Contraseña incorrecta', 'danger')
             else:
-                flash('No tienes acceso de administrador', 'danger')
-                return redirect(url_for('main.login'))
-        else:
-            flash('Correo o contraseña incorrectos', 'danger')
-    
+                flash('Correo electrónico no registrado', 'danger')
+
+    except Exception as e:
+        # Si ocurre un error inesperado, mostrar un error por defecto
+        flash('Ocurrió un error inesperado. Por favor, inténtalo de nuevo más tarde.', 'danger')
+
     return render_template('login.html')
 
 

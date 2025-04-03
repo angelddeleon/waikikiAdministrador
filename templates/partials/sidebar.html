@@ -12,7 +12,7 @@
         </div>
         <!--navigation-->
         <ul class="metismenu collapse" id="sidebarMenu">
-            <!-- Existing menu items -->
+            <!-- Reservaciones -->
             <li style="background-color: {% if request.endpoint == 'main.crear_reservacion' or request.endpoint == 'main.listaReservas' %}#003366; color: white;{% endif %}">
                 <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.crear_reservacion' or request.endpoint == 'main.listaReservas' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-calendar-week'></i></div>
@@ -27,6 +27,8 @@
                     </li>
                 </ul>
             </li>
+
+            <!-- Clases -->
             <li style="background-color: {% if request.endpoint == 'main.crear_clase' or request.endpoint == 'main.clases' %}#003366; color: white;{% endif %}">
                 <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.crear_clase' or request.endpoint == 'main.clases' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-book-bookmark'></i></div>
@@ -41,6 +43,8 @@
                     </li>
                 </ul>
             </li>
+
+            <!-- Pagos -->
             <li style="background-color: {% if request.endpoint == 'main.pagos' %}#003366; color: white;{% endif %}">
                 <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.pagos' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-money'></i></div>
@@ -53,6 +57,7 @@
                 </ul>
             </li>
 
+            <!-- Usuarios -->
             <li style="background-color: {% if request.endpoint == 'main.listaUsuarios' %}#003366; color: white;{% endif %}">
                 <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.listaUsuarios' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-user'></i></div>
@@ -65,13 +70,16 @@
                 </ul>
             </li>
 
-            <!-- New Configuration menu -->
-            <li style="background-color: {% if request.endpoint == 'main.logout' %}#003366; color: white;{% endif %}">
-                <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.logout' %}white{% endif %}">
+            <!-- Configuración -->
+            <li style="background-color: {% if request.endpoint == 'main.tasa_bs' %}#003366; color: white;{% endif %}">
+                <a href="javascript:;" class="has-arrow" style="color: {% if request.endpoint == 'main.tasa_bs' %}white{% endif %}">
                     <div class="parent-icon"><i class='bx bx-cog'></i></div>
                     <div class="menu-title">Configuración</div>
                 </a>
                 <ul>
+                    <li style="background-color: {% if request.endpoint == 'main.tasa_bs' %}#336699; color: white;{% endif %}">
+                        <a href="{{ url_for('main.tasa_bs') }}" style="color: {% if request.endpoint == 'main.tasa_bs' %}white{% endif %};">Tasa</a>
+                    </li>
                     <li style="background-color: {% if request.endpoint == 'main.logout' %}#336699; color: white;{% endif %}">
                         <a href="{{ url_for('main.logout') }}" style="color: {% if request.endpoint == 'main.logout' %}white{% endif %};">Salir</a>
                     </li>

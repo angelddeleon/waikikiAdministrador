@@ -6,7 +6,6 @@ from datetime import datetime
 
 db = SQLAlchemy()
 
-# Modelo para la tabla 'usuarios'
 class Usuario(db.Model, UserMixin):
     __tablename__ = 'usuarios'
 
@@ -24,11 +23,12 @@ class Usuario(db.Model, UserMixin):
         return f"<Usuario {self.nombre} - {self.email}>"
 
     def set_password(self, password):
+        """Generar y asignar el hash de la contraseña"""
         self.password = generate_password_hash(password)
 
     def check_password(self, password):
+        """Verificar si la contraseña proporcionada coincide con el hash almacenado"""
         return check_password_hash(self.password, password)
-
 
 # Modelo para la tabla 'canchas'
 class Cancha(db.Model):

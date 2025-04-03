@@ -13,6 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link href="{{ url_for('static', filename='assets/css/app.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='assets/css/icons.css') }}" rel="stylesheet">
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <title>Waikiki</title>
 </head>
 
@@ -30,7 +32,21 @@
                     
                     <hr class="my-4">
                     
-                    <form method="POST" action="{{ url_for('main.crear_reservacion') }}" enctype="multipart/form-data">
+                    <!-- Mensajes Flash -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                {% if category == 'error' %}
+                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <form method="POST" action="{{ url_for('main.crear_reservacion') }}" enctype="multipart/form-data" id="reservacionForm">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="cancha" class="form-label">Seleccionar Cancha</label>
@@ -66,6 +82,7 @@
                             <div class="col-md-4 mb-3">
                                 <label for="monto" class="form-label">Monto ($)</label>
                                 <input type="number" class="form-control" id="monto" name="monto" step="0.01" min="0" readonly required>
+                                <div id="errorMonto" class="invalid-feedback"></div>
                             </div>
                         </div>
                         
@@ -81,7 +98,7 @@
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                            <button type="submit" class="btn btn-primary px-4">Reservar</button>
+                            <button type="submit" class="btn btn-primary px-4" id="submitBtn">Reservar</button>
                         </div>
                     </form>
                 </div>
@@ -91,36 +108,64 @@
 
     <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         $(document).ready(function() {
+            // Verificar si hay un mensaje de éxito para mostrar el popup
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'success' %}
+                            Swal.fire({
+                                title: '¡Éxito!',
+                                text: '{{ message }}',
+                                icon: 'success',
+                                confirmButtonText: 'Aceptar'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    window.location.href = "{{ url_for('main.listaReservas') }}";
+                                }
+                            });
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
             // Función para convertir hora en formato de 24 horas a 12 horas con AM/PM
             function convertirHoraAMPM(hora24) {
-                var hora = parseInt(hora24.split(":")[0]);
-                var minutos = hora24.split(":")[1];
-                var suffix = hora >= 12 ? "PM" : "AM";
-                if (hora > 12) {
-                    hora -= 12;
-                } else if (hora === 0) {
-                    hora = 12;
-                }
-                return hora + ":" + minutos + " " + suffix;
+                var [horas, minutos] = hora24.split(':');
+                horas = parseInt(horas);
+                var suffix = horas >= 12 ? 'PM' : 'AM';
+                horas = horas % 12;
+                horas = horas ? horas : 12; // Convertir 0 a 12
+                return horas + ':' + minutos + ' ' + suffix;
             }
 
             // Función para convertir hora AM/PM a formato de 24 horas
             function convertirHora24(horaAMPM) {
-                var partes = horaAMPM.split(' ');
-                var horaMinutos = partes[0].split(':');
-                var hora = parseInt(horaMinutos[0]);
-                var minutos = horaMinutos[1];
-                var ampm = partes[1];
-
-                if (ampm === 'PM' && hora !== 12) {
-                    hora += 12;
-                } else if (ampm === 'AM' && hora === 12) {
-                    hora = 0;
+                var [tiempo, ampm] = horaAMPM.split(' ');
+                var [horas, minutos] = tiempo.split(':');
+                horas = parseInt(horas);
+                
+                if (ampm === 'PM' && horas < 12) {
+                    horas += 12;
+                } else if (ampm === 'AM' && horas === 12) {
+                    horas = 0;
                 }
                 
-                return (hora < 10 ? '0' : '') + hora + ':' + minutos + ':00';
+                return (horas < 10 ? '0' : '') + horas + ':' + minutos + ':00';
+            }
+
+            // Función para obtener la hora siguiente
+            function getHoraSiguiente(hora) {
+                var [horas, minutos, segundos] = hora.split(':').map(Number);
+                var fecha = new Date();
+                fecha.setHours(horas, minutos, segundos);
+                fecha.setHours(fecha.getHours() + 1);
+                return fecha.getHours().toString().padStart(2, '0') + ':' + 
+                       fecha.getMinutes().toString().padStart(2, '0') + ':' + 
+                       fecha.getSeconds().toString().padStart(2, '0');
             }
 
             // Función que se ejecuta cuando cambia el valor del campo 'cancha' o 'fecha'
@@ -143,6 +188,10 @@
                                 var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
                                 $('#hora_inicio').append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
                             });
+                            
+                            // Limpiar hora final y monto cuando cambian cancha o fecha
+                            $('#hora_final').empty().append('<option value="">Seleccione hora</option>');
+                            $('#monto').val('');
                         },
                         error: function() {
                             alert('Error al obtener las horas disponibles');
@@ -158,24 +207,50 @@
                     $.ajax({
                         url: '/obtener_horas_disponibles',
                         method: 'GET',
-                        data: { cancha_id: $('#cancha').val(), fecha: $('#fecha').val() },
+                        data: { 
+                            cancha_id: $('#cancha').val(), 
+                            fecha: $('#fecha').val(),
+                            hora_inicio: hora_inicio // Enviamos la hora de inicio para filtrar
+                        },
                         success: function(response) {
                             // Limpiar el select de horas final
                             $('#hora_final').empty();
                             $('#hora_final').append('<option value="">Seleccione hora</option>');
 
-                            // Recorrer las horas disponibles y agregar solo las mayores que la hora de inicio
-                            response.forEach(function(hora) {
-                                if (hora.start_time > hora_inicio) {
-                                    var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
-                                    $('#hora_final').append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
-                                }
+                            // Convertir la hora de inicio a objeto Date para comparación
+                            var [horaInicioH, horaInicioM] = hora_inicio.split(':').map(Number);
+                            var horaInicioDate = new Date();
+                            horaInicioDate.setHours(horaInicioH, horaInicioM, 0);
+
+                            // Procesar solo las horas posteriores a la hora de inicio
+                            var horasFiltradas = response.filter(function(hora) {
+                                var [horaH, horaM] = hora.start_time.split(':').map(Number);
+                                var horaDate = new Date();
+                                horaDate.setHours(horaH, horaM, 0);
+                                return horaDate > horaInicioDate;
                             });
+
+                            // Agregar también la hora siguiente a la seleccionada
+                            var horaSiguiente = getHoraSiguiente(hora_inicio);
+                            var horaSiguienteAMPM = convertirHoraAMPM(horaSiguiente);
+                            $('#hora_final').append('<option value="' + horaSiguiente + '">' + horaSiguienteAMPM + '</option>');
+
+                            // Agregar las horas disponibles
+                            horasFiltradas.forEach(function(hora) {
+                                var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
+                                $('#hora_final').append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
+                            });
+                            
+                            // Limpiar monto cuando cambia hora inicio
+                            $('#monto').val('');
                         },
                         error: function() {
                             alert('Error al obtener las horas disponibles');
                         }
                     });
+                } else {
+                    $('#hora_final').empty().append('<option value="">Seleccione hora</option>');
+                    $('#monto').val('');
                 }
             });
 
@@ -186,19 +261,76 @@
                 var precioPorHora = parseFloat($('#cancha option:selected').data('precio'));
 
                 if (hora_inicio && hora_final && precioPorHora) {
-                    var hora_inicio_24 = convertirHora24(hora_inicio);
-                    var hora_final_24 = convertirHora24(hora_final);
+                    var hora_inicio_24 = hora_inicio; // Ya está en formato 24h
+                    var hora_final_24 = hora_final;   // Ya está en formato 24h
 
-                    var hora_inicio_date = new Date("1970-01-01T" + hora_inicio_24 + "Z");
-                    var hora_final_date = new Date("1970-01-01T" + hora_final_24 + "Z");
+                    // Crear objetos Date para calcular la diferencia
+                    var [horaInicioH, horaInicioM] = hora_inicio_24.split(':').map(Number);
+                    var [horaFinalH, horaFinalM] = hora_final_24.split(':').map(Number);
+                    
+                    var inicio = new Date();
+                    inicio.setHours(horaInicioH, horaInicioM, 0);
+                    
+                    var fin = new Date();
+                    fin.setHours(horaFinalH, horaFinalM, 0);
 
-                    var diferenciaHoras = (hora_final_date - hora_inicio_date) / (1000 * 60 * 60);
+                    var diferenciaHoras = (fin - inicio) / (1000 * 60 * 60); // Diferencia en horas
 
                     if (diferenciaHoras > 0) {
                         var montoTotal = diferenciaHoras * precioPorHora;
                         $('#monto').val(montoTotal.toFixed(2));
+                        $('#errorMonto').text('').hide();
+                    } else {
+                        $('#monto').val('');
+                        $('#errorMonto').text('La hora final debe ser mayor que la hora de inicio').show();
                     }
+                } else {
+                    $('#monto').val('');
                 }
+            });
+
+            // Validación del formulario antes de enviar
+            $('#reservacionForm').on('submit', function(e) {
+                var monto = parseFloat($('#monto').val());
+                var hora_inicio = $('#hora_inicio').val();
+                var hora_final = $('#hora_final').val();
+                var cancha = $('#cancha').val();
+                var fecha = $('#fecha').val();
+                
+                if (!cancha) {
+                    e.preventDefault();
+                    Swal.fire('Error', 'Debe seleccionar una cancha', 'error');
+                    return false;
+                }
+                
+                if (!fecha) {
+                    e.preventDefault();
+                    Swal.fire('Error', 'Debe seleccionar una fecha', 'error');
+                    return false;
+                }
+                
+                if (!hora_inicio) {
+                    e.preventDefault();
+                    Swal.fire('Error', 'Debe seleccionar una hora de inicio', 'error');
+                    return false;
+                }
+                
+                if (!hora_final) {
+                    e.preventDefault();
+                    Swal.fire('Error', 'Debe seleccionar una hora de finalización', 'error');
+                    return false;
+                }
+                
+                if (!monto || monto <= 0) {
+                    e.preventDefault();
+                    Swal.fire('Error', 'El monto debe ser mayor que cero', 'error');
+                    return false;
+                }
+                
+                // Deshabilitar el botón para evitar múltiples envíos
+                $('#submitBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...');
+                
+                return true;
             });
         });
     </script>
