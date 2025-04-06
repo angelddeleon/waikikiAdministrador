@@ -30,6 +30,9 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h4 class="mb-0">Crear Nueva Reservación</h4>
+                        <button type="button" class="btn btn-success" id="addMoreBtn">
+                            <i class="bx bx-plus"></i> Agregar otra cancha
+                        </button>
                     </div>
                     
                     <hr class="my-4">
@@ -49,55 +52,70 @@
                     {% endwith %}
                     
                     <form method="POST" action="{{ url_for('main.crear_reservacion') }}" enctype="multipart/form-data" id="reservacionForm">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="cancha" class="form-label">Seleccionar Cancha</label>
-                                <select class="form-select" id="cancha" name="cancha" required>
-                                    <option value="">Seleccione una cancha</option>
-                                    {% for cancha in canchas %}
-                                        <option value="{{ cancha.id }}" data-precio="{{ cancha.price_per_hour }}">{{ cancha.name }} - ${{ cancha.price_per_hour }} por hora</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="fecha" class="form-label">Fecha</label>
-                                <input type="date" class="form-control" id="fecha" name="fecha" min="{{ min_date.strftime('%Y-%m-%d') }}" value="{{ min_date.strftime('%Y-%m-%d') }}" required>
+                        <div id="reservationsContainer">
+                            <!-- Primer formulario de reservación -->
+                            <div class="reservation-form mb-4 p-3 border rounded">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="cancha_0" class="form-label">Seleccionar Cancha</label>
+                                        <select class="form-select cancha-select" id="cancha_0" name="canchas[]" required>
+                                            <option value="">Seleccione una cancha</option>
+                                            {% for cancha in canchas %}
+                                                <option value="{{ cancha.id }}" data-precio="{{ cancha.price_per_hour }}">{{ cancha.name }} - ${{ cancha.price_per_hour }} por hora</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label for="fecha_0" class="form-label">Fecha</label>
+                                        <input type="date" class="form-control fecha-input" id="fecha_0" name="fechas[]" min="{{ min_date.strftime('%Y-%m-%d') }}" value="{{ min_date.strftime('%Y-%m-%d') }}" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="hora_inicio_0" class="form-label">Hora de Inicio</label>
+                                        <select class="form-select hora-inicio-select" id="hora_inicio_0" name="horas_inicio[]" required>
+                                            <option value="">Seleccione hora</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3">
+                                        <label for="hora_final_0" class="form-label">Hora de Finalización</label>
+                                        <select class="form-select hora-final-select" id="hora_final_0" name="horas_final[]" required>
+                                            <option value="">Seleccione hora</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-4 mb-3 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger remove-btn" style="display: none;">
+                                            <i class="bx bx-trash"></i> Eliminar
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="metodo_pago" class="form-label">Método de Pago</label>
+                                        <select class="form-select metodo-pago-select" id="metodo_pago" name="metodo_pago" required>
+                                            {% for metodo in metodos_pago %}
+                                                <option value="{{ metodo }}">{{ metodo|capitalize }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Monto Individual($)</label>
+                                        <input type="number" class="form-control monto-input" name="montos[]" step="0.01" min="0" readonly required>
+                                        <div class="invalid-feedback error-monto"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="hora_inicio" class="form-label">Hora de Inicio</label>
-                                <select class="form-select" id="hora_inicio" name="hora_inicio" required>
-                                    <option value="">Seleccione hora</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="hora_final" class="form-label">Hora de Finalización</label>
-                                <select class="form-select" id="hora_final" name="hora_final" required>
-                                    <option value="">Seleccione hora</option>
-                                </select>
-                            </div>
-                            
-
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="metodo_pago" class="form-label">Método de Pago</label>
-                                <select class="form-select" id="metodo_pago" name="metodo_pago" required>
-                                    {% for metodo in metodos_pago %}
-                                        <option value="{{ metodo }}">{{ metodo|capitalize }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label for="monto" class="form-label">Monto Individual($)</label>
-                                <input type="number" class="form-control" id="monto" name="monto" step="0.01" min="0" readonly required>
-                                <div id="errorMonto" class="invalid-feedback"></div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <h5>Total a Pagar: $<span id="totalPagar">0.00</span></h5>
                             </div>
                         </div>
                         
@@ -136,6 +154,9 @@
                 {% endif %}
             {% endwith %}
 
+            // Contador para los IDs de los formularios
+            let formCounter = 1;
+            
             // Función para convertir hora en formato de 24 horas a 12 horas con AM/PM
             function convertirHoraAMPM(hora24) {
                 var [horas, minutos] = hora24.split(':');
@@ -144,21 +165,6 @@
                 horas = horas % 12;
                 horas = horas ? horas : 12; // Convertir 0 a 12
                 return horas + ':' + minutos + ' ' + suffix;
-            }
-
-            // Función para convertir hora AM/PM a formato de 24 horas
-            function convertirHora24(horaAMPM) {
-                var [tiempo, ampm] = horaAMPM.split(' ');
-                var [horas, minutos] = tiempo.split(':');
-                horas = parseInt(horas);
-                
-                if (ampm === 'PM' && horas < 12) {
-                    horas += 12;
-                } else if (ampm === 'AM' && horas === 12) {
-                    horas = 0;
-                }
-                
-                return (horas < 10 ? '0' : '') + horas + ':' + minutos + ':00';
             }
 
             // Función para obtener la hora siguiente
@@ -172,10 +178,36 @@
                        fecha.getSeconds().toString().padStart(2, '0');
             }
 
+            // Función para actualizar las opciones de canchas disponibles
+            function updateCanchasDisponibles() {
+                // Obtener todas las canchas seleccionadas
+                const selectedCanchas = [];
+                $('.cancha-select').each(function() {
+                    if ($(this).val()) {
+                        selectedCanchas.push($(this).val());
+                    }
+                });
+                
+                // Actualizar cada select de canchas
+                $('.cancha-select').each(function() {
+                    const currentValue = $(this).val();
+                    $(this).find('option').each(function() {
+                        const optionValue = $(this).val();
+                        if (optionValue && optionValue !== currentValue && selectedCanchas.includes(optionValue)) {
+                            $(this).hide();
+                        } else {
+                            $(this).show();
+                        }
+                    });
+                });
+            }
+
             // Función que se ejecuta cuando cambia el valor del campo 'cancha' o 'fecha'
-            $('#cancha, #fecha').change(function() {
-                var cancha_id = $('#cancha').val();
-                var fecha = $('#fecha').val();
+            $(document).on('change', '.cancha-select, .fecha-input', function() {
+                const container = $(this).closest('.reservation-form');
+                const cancha_id = container.find('.cancha-select').val();
+                const fecha = container.find('.fecha-input').val();
+                const index = container.index();
 
                 if (cancha_id && fecha) {
                     $.ajax({
@@ -184,18 +216,25 @@
                         data: { cancha_id: cancha_id, fecha: fecha },
                         success: function(response) {
                             // Limpiar el select de horas inicio
-                            $('#hora_inicio').empty();
-                            $('#hora_inicio').append('<option value="">Seleccione hora</option>');
+                            const horaInicioSelect = container.find('.hora-inicio-select');
+                            horaInicioSelect.empty();
+                            horaInicioSelect.append('<option value="">Seleccione hora</option>');
 
                             // Recorrer las horas disponibles y agregarlas al select
                             response.forEach(function(hora) {
                                 var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
-                                $('#hora_inicio').append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
+                                horaInicioSelect.append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
                             });
                             
                             // Limpiar hora final y monto cuando cambian cancha o fecha
-                            $('#hora_final').empty().append('<option value="">Seleccione hora</option>');
-                            $('#monto').val('');
+                            container.find('.hora-final-select').empty().append('<option value="">Seleccione hora</option>');
+                            container.find('.monto-input').val('');
+                            
+                            // Actualizar el total
+                            calcularTotal();
+                            
+                            // Actualizar canchas disponibles
+                            updateCanchasDisponibles();
                         },
                         error: function() {
                             alert('Error al obtener las horas disponibles');
@@ -205,21 +244,27 @@
             });
 
             // Función que se ejecuta cuando cambia la hora de inicio
-            $('#hora_inicio').change(function() {
-                var hora_inicio = $(this).val();
+            $(document).on('change', '.hora-inicio-select', function() {
+                const container = $(this).closest('.reservation-form');
+                const hora_inicio = $(this).val();
+                const cancha_id = container.find('.cancha-select').val();
+                const fecha = container.find('.fecha-input').val();
+                const index = container.index();
+
                 if (hora_inicio) {
                     $.ajax({
                         url: '/obtener_horas_disponibles',
                         method: 'GET',
                         data: { 
-                            cancha_id: $('#cancha').val(), 
-                            fecha: $('#fecha').val(),
-                            hora_inicio: hora_inicio // Enviamos la hora de inicio para filtrar
+                            cancha_id: cancha_id, 
+                            fecha: fecha,
+                            hora_inicio: hora_inicio
                         },
                         success: function(response) {
                             // Limpiar el select de horas final
-                            $('#hora_final').empty();
-                            $('#hora_final').append('<option value="">Seleccione hora</option>');
+                            const horaFinalSelect = container.find('.hora-final-select');
+                            horaFinalSelect.empty();
+                            horaFinalSelect.append('<option value="">Seleccione hora</option>');
 
                             // Convertir la hora de inicio a objeto Date para comparación
                             var [horaInicioH, horaInicioM] = hora_inicio.split(':').map(Number);
@@ -234,35 +279,65 @@
                                 return horaDate > horaInicioDate;
                             });
 
-                            // Agregar también la hora siguiente a la seleccionada
+                            // Calcular la hora siguiente (hora_inicio + 1 hora)
                             var horaSiguiente = getHoraSiguiente(hora_inicio);
                             var horaSiguienteAMPM = convertirHoraAMPM(horaSiguiente);
-                            $('#hora_final').append('<option value="' + horaSiguiente + '">' + horaSiguienteAMPM + '</option>');
+                            
+                            // Verificar si la hora siguiente existe en las horas disponibles
+                            var horaSiguienteExiste = horasFiltradas.some(function(hora) {
+                                return hora.start_time === horaSiguiente;
+                            });
+
+                            // Agregar la hora siguiente solo si no existe en el sistema
+                            if (!horaSiguienteExiste) {
+                                horaFinalSelect.append('<option value="' + horaSiguiente + '">' + horaSiguienteAMPM + '</option>');
+                            }
 
                             // Agregar las horas disponibles
                             horasFiltradas.forEach(function(hora) {
                                 var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
-                                $('#hora_final').append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
+                                horaFinalSelect.append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
+                            });
+
+                            // Agregar siempre la opción de 23:00:00 como hora final
+                            var hora23 = '23:00:00';
+                            var hora23AMPM = convertirHoraAMPM(hora23);
+                            
+                            // Verificar si 23:00:00 ya está en las opciones o si la hora de inicio es 22:00:00
+                            var hora23Existe = horasFiltradas.some(function(hora) {
+                                return hora.start_time === hora23;
                             });
                             
+                            // Solo agregar 23:00:00 si no existe y la hora de inicio no es 22:00:00
+                            if (!hora23Existe && hora_inicio !== '22:00:00') {
+                                horaFinalSelect.append('<option value="' + hora23 + '">' + hora23AMPM + '</option>');
+                            }
+                            
                             // Limpiar monto cuando cambia hora inicio
-                            $('#monto').val('');
+                            container.find('.monto-input').val('');
+                            
+                            // Actualizar el total
+                            calcularTotal();
                         },
                         error: function() {
                             alert('Error al obtener las horas disponibles');
                         }
                     });
                 } else {
-                    $('#hora_final').empty().append('<option value="">Seleccione hora</option>');
-                    $('#monto').val('');
+                    container.find('.hora-final-select').empty().append('<option value="">Seleccione hora</option>');
+                    container.find('.monto-input').val('');
+                    calcularTotal();
                 }
             });
 
             // Calcular el monto cuando se selecciona la hora de inicio y hora final
-            $('#hora_final').change(function() {
-                var hora_inicio = $('#hora_inicio').val();
-                var hora_final = $(this).val();
-                var precioPorHora = parseFloat($('#cancha option:selected').data('precio'));
+            $(document).on('change', '.hora-final-select', function() {
+                const container = $(this).closest('.reservation-form');
+                const hora_inicio = container.find('.hora-inicio-select').val();
+                const hora_final = $(this).val();
+                const precioPorHora = parseFloat(container.find('.cancha-select option:selected').data('precio'));
+                const montoInput = container.find('.monto-input');
+                const errorMonto = container.find('.error-monto');
 
                 if (hora_inicio && hora_final && precioPorHora) {
                     var hora_inicio_24 = hora_inicio; // Ya está en formato 24h
@@ -282,52 +357,177 @@
 
                     if (diferenciaHoras > 0) {
                         var montoTotal = diferenciaHoras * precioPorHora;
-                        $('#monto').val(montoTotal.toFixed(2));
-                        $('#errorMonto').text('').hide();
+                        montoInput.val(montoTotal.toFixed(2));
+                        errorMonto.text('').hide();
                     } else {
-                        $('#monto').val('');
-                        $('#errorMonto').text('La hora final debe ser mayor que la hora de inicio').show();
+                        montoInput.val('');
+                        errorMonto.text('La hora final debe ser mayor que la hora de inicio').show();
                     }
                 } else {
-                    $('#monto').val('');
+                    montoInput.val('');
                 }
+                
+                // Actualizar el total
+                calcularTotal();
+            });
+
+            // Función para calcular el total a pagar
+            function calcularTotal() {
+                let total = 0;
+                $('.monto-input').each(function() {
+                    const monto = parseFloat($(this).val()) || 0;
+                    total += monto;
+                });
+                $('#totalPagar').text(total.toFixed(2));
+            }
+
+            // Agregar nuevo formulario de reservación
+            $('#addMoreBtn').click(function() {
+                const newForm = `
+                    <div class="reservation-form mb-4 p-3 border rounded">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cancha_${formCounter}" class="form-label">Seleccionar Cancha</label>
+                                <select class="form-select cancha-select" id="cancha_${formCounter}" name="canchas[]" required>
+                                    <option value="">Seleccione una cancha</option>
+                                    {% for cancha in canchas %}
+                                        <option value="{{ cancha.id }}" data-precio="{{ cancha.price_per_hour }}">{{ cancha.name }} - ${{ cancha.price_per_hour }} por hora</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha_${formCounter}" class="form-label">Fecha</label>
+                                <input type="date" class="form-control fecha-input" id="fecha_${formCounter}" name="fechas[]" min="{{ min_date.strftime('%Y-%m-%d') }}" value="{{ min_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="hora_inicio_${formCounter}" class="form-label">Hora de Inicio</label>
+                                <select class="form-select hora-inicio-select" id="hora_inicio_${formCounter}" name="horas_inicio[]" required>
+                                    <option value="">Seleccione hora</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="hora_final_${formCounter}" class="form-label">Hora de Finalización</label>
+                                <select class="form-select hora-final-select" id="hora_final_${formCounter}" name="horas_final[]" required>
+                                    <option value="">Seleccione hora</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3 d-flex align-items-end">
+                                <button type="button" class="btn btn-danger remove-btn">
+                                    <i class="bx bx-trash"></i> Eliminar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Método de Pago</label>
+                                <select class="form-select metodo-pago-select" name="metodo_pago" required>
+                                    {% for metodo in metodos_pago %}
+                                        <option value="{{ metodo }}">{{ metodo|capitalize }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Monto Individual($)</label>
+                                <input type="number" class="form-control monto-input" name="montos[]" step="0.01" min="0" readonly required>
+                                <div class="invalid-feedback error-monto"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                $('#reservationsContainer').append(newForm);
+                formCounter++;
+                
+                // Sincronizar el método de pago con el primer formulario
+                const primerMetodoPago = $('#reservationsContainer .reservation-form:first-child .metodo-pago-select').val();
+                $('.metodo-pago-select').val(primerMetodoPago);
+                
+                // Mostrar botones de eliminar en todos los formularios excepto el primero
+                $('.remove-btn').show();
+                $('#reservationsContainer .reservation-form:first-child .remove-btn').hide();
+                
+                // Actualizar canchas disponibles
+                updateCanchasDisponibles();
+            });
+
+            // Eliminar formulario de reservación
+            $(document).on('click', '.remove-btn', function() {
+                $(this).closest('.reservation-form').remove();
+                
+                // Si solo queda un formulario, ocultar el botón de eliminar
+                if ($('.reservation-form').length === 1) {
+                    $('.remove-btn').hide();
+                }
+                
+                // Actualizar canchas disponibles
+                updateCanchasDisponibles();
+                
+                // Actualizar el total
+                calcularTotal();
+            });
+
+            // Sincronizar método de pago en todos los formularios cuando cambia
+            $(document).on('change', '.metodo-pago-select', function() {
+                const selectedValue = $(this).val();
+                $('.metodo-pago-select').val(selectedValue);
             });
 
             // Validación del formulario antes de enviar
             $('#reservacionForm').on('submit', function(e) {
-                var monto = parseFloat($('#monto').val());
-                var hora_inicio = $('#hora_inicio').val();
-                var hora_final = $('#hora_final').val();
-                var cancha = $('#cancha').val();
-                var fecha = $('#fecha').val();
+                let isValid = true;
+                let errorMessage = '';
                 
-                if (!cancha) {
-                    e.preventDefault();
-                    Swal.fire('Error', 'Debe seleccionar una cancha', 'error');
-                    return false;
-                }
+                // Validar cada formulario de reservación
+                $('.reservation-form').each(function(index) {
+                    const container = $(this);
+                    const cancha = container.find('.cancha-select').val();
+                    const fecha = container.find('.fecha-input').val();
+                    const hora_inicio = container.find('.hora-inicio-select').val();
+                    const hora_final = container.find('.hora-final-select').val();
+                    const monto = parseFloat(container.find('.monto-input').val());
+                    
+                    if (!cancha) {
+                        isValid = false;
+                        errorMessage = 'Debe seleccionar una cancha en todas las reservaciones';
+                        return false; // Salir del each
+                    }
+                    
+                    if (!fecha) {
+                        isValid = false;
+                        errorMessage = 'Debe seleccionar una fecha en todas las reservaciones';
+                        return false;
+                    }
+                    
+                    if (!hora_inicio) {
+                        isValid = false;
+                        errorMessage = 'Debe seleccionar una hora de inicio en todas las reservaciones';
+                        return false;
+                    }
+                    
+                    if (!hora_final) {
+                        isValid = false;
+                        errorMessage = 'Debe seleccionar una hora de finalización en todas las reservaciones';
+                        return false;
+                    }
+                    
+                    if (!monto || monto <= 0) {
+                        isValid = false;
+                        errorMessage = 'El monto debe ser mayor que cero en todas las reservaciones';
+                        return false;
+                    }
+                });
                 
-                if (!fecha) {
+                if (!isValid) {
                     e.preventDefault();
-                    Swal.fire('Error', 'Debe seleccionar una fecha', 'error');
-                    return false;
-                }
-                
-                if (!hora_inicio) {
-                    e.preventDefault();
-                    Swal.fire('Error', 'Debe seleccionar una hora de inicio', 'error');
-                    return false;
-                }
-                
-                if (!hora_final) {
-                    e.preventDefault();
-                    Swal.fire('Error', 'Debe seleccionar una hora de finalización', 'error');
-                    return false;
-                }
-                
-                if (!monto || monto <= 0) {
-                    e.preventDefault();
-                    Swal.fire('Error', 'El monto debe ser mayor que cero', 'error');
+                    Swal.fire('Error', errorMessage, 'error');
                     return false;
                 }
                 
