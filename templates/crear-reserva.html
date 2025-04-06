@@ -220,11 +220,22 @@
                             horaInicioSelect.empty();
                             horaInicioSelect.append('<option value="">Seleccione hora</option>');
 
-                            // Recorrer las horas disponibles y agregarlas al select
-                            response.forEach(function(hora) {
-                                var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
-                                horaInicioSelect.append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
-                            });
+                            // Verificar si hay horas disponibles
+                            if (response.length === 0) {
+                                horaInicioSelect.append('<option value="" disabled>No hay horas disponibles</option>');
+                                Swal.fire({
+                                    title: 'Horas no disponibles',
+                                    text: 'No hay horas disponibles para esta cancha en la fecha seleccionada',
+                                    icon: 'warning',
+                                    confirmButtonText: 'Aceptar'
+                                });
+                            } else {
+                                // Recorrer las horas disponibles y agregarlas al select
+                                response.forEach(function(hora) {
+                                    var horaFormatoAMPM = convertirHoraAMPM(hora.start_time);
+                                    horaInicioSelect.append('<option value="' + hora.start_time + '">' + horaFormatoAMPM + '</option>');
+                                });
+                            }
                             
                             // Limpiar hora final y monto cuando cambian cancha o fecha
                             container.find('.hora-final-select').empty().append('<option value="">Seleccione hora</option>');
@@ -265,6 +276,12 @@
                             const horaFinalSelect = container.find('.hora-final-select');
                             horaFinalSelect.empty();
                             horaFinalSelect.append('<option value="">Seleccione hora</option>');
+
+                            // Verificar si hay horas disponibles
+                            if (response.length === 0) {
+                                horaFinalSelect.append('<option value="" disabled>No hay horas disponibles</option>');
+                                return;
+                            }
 
                             // Convertir la hora de inicio a objeto Date para comparación
                             var [horaInicioH, horaInicioM] = hora_inicio.split(':').map(Number);

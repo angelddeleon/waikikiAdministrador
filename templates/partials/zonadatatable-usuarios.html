@@ -24,14 +24,14 @@
                         <td>{{ 'Bloqueado' if usuario.isBlocked else 'Activo' }}</td>
                         <td>
                             <!-- Botón para bloquear/desbloquear usuario con iconos -->
-                            <form action="{{ url_for('main.toggle_block', user_id=usuario.id) }}" method="POST">
+                            <form action="{{ url_for('main.toggle_block', user_id=usuario.id) }}" method="POST" class="d-inline">
                                 <button type="submit" class="btn btn-{{ 'danger' if usuario.isBlocked else 'success' }}">
                                     <i class="bx {{ 'bx-lock' if usuario.isBlocked else 'bx-lock-open' }}"></i>
                                 </button>
                             </form>
                         </td>
                     </tr>
-                {% endfor %}
+                    {% endfor %}
                 </tbody>
                 <tfoot>
                     <tr>
