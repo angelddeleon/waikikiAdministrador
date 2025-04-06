@@ -12,7 +12,9 @@
     <link href="{{ url_for('static', filename='assets/css/bootstrap-extended.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link href="{{ url_for('static', filename='assets/css/app.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='assets/imagenes/Logo-Waikiki-NEGRO.png') }}">
     <link href="{{ url_for('static', filename='assets/css/icons.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='assets/imagenes/Logo-Waikiki-NEGRO.png') }}">
     <!-- SweetAlert2 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <title>Waikiki</title>
@@ -79,11 +81,7 @@
                                 </select>
                             </div>
                             
-                            <div class="col-md-4 mb-3">
-                                <label for="monto" class="form-label">Monto ($)</label>
-                                <input type="number" class="form-control" id="monto" name="monto" step="0.01" min="0" readonly required>
-                                <div id="errorMonto" class="invalid-feedback"></div>
-                            </div>
+
                         </div>
                         
                         <div class="row">
@@ -94,6 +92,12 @@
                                         <option value="{{ metodo }}">{{ metodo|capitalize }}</option>
                                     {% endfor %}
                                 </select>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="monto" class="form-label">Monto Individual($)</label>
+                                <input type="number" class="form-control" id="monto" name="monto" step="0.01" min="0" readonly required>
+                                <div id="errorMonto" class="invalid-feedback"></div>
                             </div>
                         </div>
                         
