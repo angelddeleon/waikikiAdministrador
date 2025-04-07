@@ -386,6 +386,13 @@ def update_payment_status(pago_id):
                     reservacion.status = 'confirmada'
                     db.session.add(reservacion)
 
+                    # Cambiar el estado de los horarios a disponible
+                    horario = Horario.query.get(reservacion.horario_id)
+                    if horario:
+                        horario.estado = 'ocupado'
+                        db.session.add(horario)
+
+
             # Si el pago fue cancelado, cambiar el estado de las reservaciones a cancelada y los horarios a disponible
             elif new_status == 'rechazado':
                 reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()

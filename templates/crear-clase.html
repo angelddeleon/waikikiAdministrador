@@ -112,9 +112,32 @@
             </div>
         </div>
     </div>
-
-    <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
+    
+                <!-- Bootstrap JS -->
+                <script src="{{ url_for('static', filename='assets/js/bootstrap.bundle.min.js') }}"></script>
+                <!--plugins-->
+                <script src="{{ url_for('static', filename='assets/js/jquery.min.js') }}"></script>
+                <script src="{{ url_for('static', filename='assets/plugins/metismenu/js/metisMenu.min.js') }}"></script>
+                <script src="{{ url_for('static', filename='assets/plugins/perfect-scrollbar/js/perfect-scrollbar.js') }}"></script>
+                <script src="{{ url_for('static', filename='assets/plugins/datatable/js/jquery.dataTables.min.js') }}"></script>
+                <script src="{{ url_for('static', filename='assets/plugins/datatable/js/dataTables.bootstrap5.min.js') }}"></script>
+                <script src="{{ url_for('static', filename='assets/js/app.js') }}"></script>
+                
+                <script>
+                    $(document).ready(function() {
+                        // Asegúrate de que el contenedor del sidebar esté presente
+                        var sidebarWrapper = document.querySelector('.sidebar-wrapper');
+                        
+                        if (sidebarWrapper) {
+                            // Inicializa PerfectScrollbar solo si el contenedor existe
+                            new PerfectScrollbar(sidebarWrapper);
+                        }
+            
+                        // Inicializa MetisMenu para el comportamiento del menú desplegable
+                        $('#sidebarMenu').metisMenu();
+                    });
+                </script>
+    
     <!-- SweetAlert2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
