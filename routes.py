@@ -363,67 +363,88 @@ def toggle_block(user_id):
     return redirect(url_for('main.listaUsuarios'))
 
 
-
 @main_routes.route('/update_payment_status/<int:pago_id>', methods=['POST'])
 @admin_required
 def update_payment_status(pago_id):
-    # Obtener el pago de la base de datos usando el ID
-    pago = db.session.get(Pago, pago_id)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-    if pago:
-        # Obtener el nuevo estado del formulario
+    try:
+        # Obtener el pago
+        pago = db.session.get(Pago, pago_id)
+        if not pago:
+            raise ValueError("Pago no encontrado")
+
+        # Obtener nuevo estado del formulario
         new_status = request.form.get('payment_status')
-        
-        if new_status:
-            # Actualizar el estado del pago
-            pago.payment_status = new_status
-            db.session.commit()  # Guardar los cambios en la base de datos
+        if new_status not in ['pendiente', 'completado', 'rechazado']:
+            raise ValueError("Estado de pago no válido")
 
-            # Si el pago fue confirmado, cambiar el estado de las reservaciones a confirmada
-            if new_status == 'completado':
-                reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()
-                for reservacion in reservaciones:
-                    reservacion.status = 'confirmada'
-                    db.session.add(reservacion)
+        # Actualizar estado del pago
+        pago.payment_status = new_status
+        db.session.commit()
 
-                    # Cambiar el estado de los horarios a disponible
-                    horario = Horario.query.get(reservacion.horario_id)
-                    if horario:
-                        horario.estado = 'ocupado'
-                        db.session.add(horario)
-
-
-            # Si el pago fue cancelado, cambiar el estado de las reservaciones a cancelada y los horarios a disponible
-            elif new_status == 'rechazado':
-                reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()
-                for reservacion in reservaciones:
-                    reservacion.status = 'cancelada'
-                    db.session.add(reservacion)
-
-                    # Cambiar el estado de los horarios a disponible
-                    horario = Horario.query.get(reservacion.horario_id)
-                    if horario:
-                        horario.estado = 'disponible'
-                        db.session.add(horario)
-
-            # Verificar si las reservaciones ya pasaron su hora de finalización
+        # Si el pago es completado, cambia el estado de las reservaciones a confirmada
+        if new_status == 'completado':
             reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()
             for reservacion in reservaciones:
+                reservacion.status = 'confirmada'
+                db.session.add(reservacion)
+
                 horario = Horario.query.get(reservacion.horario_id)
                 if horario:
-                    # Si la hora actual es mayor a la hora de finalización y el estado de la reservación no es terminada
-                    now = datetime.now().time()  # Hora actual
-                    if horario.end_time < now and reservacion.status != 'terminada':
-                        reservacion.status = 'terminada'
-                        db.session.add(reservacion)
+                    horario.estado = 'ocupado'
+                    db.session.add(horario)
 
-            db.session.commit()  # Guardar todos los cambios realizados
+        # Si el pago es completado, cambia el estado de las reservaciones a confirmada
+        if new_status == 'pendiente':
+            reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()
+            for reservacion in reservaciones:
+                reservacion.status = 'pendiente'
+                db.session.add(reservacion)
 
-            flash('Estado del pago y las reservaciones actualizado con éxito', 'success')
-        else:
-            flash('Estado de pago no válido', 'danger')
-    else:
-        flash('Pago no encontrado', 'danger')
+                horario = Horario.query.get(reservacion.horario_id)
+                if horario:
+                    horario.estado = 'ocupado'
+                    db.session.add(horario)                    
+
+        # Si el pago es rechazado, cambia el estado de las reservaciones a cancelada y los horarios a disponibles
+        elif new_status == 'rechazado':
+            reservaciones = Reservacion.query.filter_by(pago_id=pago.id).all()
+            for reservacion in reservaciones:
+                reservacion.status = 'cancelada'
+                db.session.add(reservacion)
+
+                horario = Horario.query.get(reservacion.horario_id)
+                if horario:
+                    horario.estado = 'disponible'
+                    db.session.add(horario)
+
+        # Verificar si las reservaciones ya pasaron su hora de finalización
+        now = datetime.now().time()
+        for reservacion in reservaciones:
+            horario = Horario.query.get(reservacion.horario_id)
+            if horario and horario.end_time < now and reservacion.status != 'terminada':
+                reservacion.status = 'terminada'
+                db.session.add(reservacion)
+
+        db.session.commit()
+        
+        if is_ajax:
+            return jsonify({
+                'success': True,
+                'message': f"Estado del pago actualizado a {new_status}."
+            }), 200
+
+        flash(f"Estado del pago actualizado a {new_status}", 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        if is_ajax:
+            return jsonify({
+                'success': False,
+                'message': str(e)
+            }), 500
+        flash(str(e), 'danger')
 
     return redirect(url_for('main.pagos'))
 
@@ -527,23 +548,54 @@ def crear_clase():
 @main_routes.route('/update_clase_status/<int:clase_id>', methods=['POST'])
 @admin_required
 def update_clase_status(clase_id):
+    # Verificar si la solicitud es AJAX
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-    # Buscar la clase en la base de datos
-    clase = db.session.get(Clase, clase_id)
+    try:
+        # Buscar la clase en la base de datos
+        clase = db.session.get(Clase, clase_id)
+        
+        if not clase:
+            raise ValueError("Clase no encontrada")
 
-    if clase:
         # Obtener el nuevo estado del formulario
         new_status = request.form.get('status')
+        
+        if new_status not in ['pendiente', 'realizada', 'cancelada']:
+            raise ValueError("Estado de clase no válido")
+        
         # Actualizar el estado de la clase
         clase.status = new_status
+        
+        # Actualizar el estado del horario según el nuevo estado
+        if new_status == 'cancelada':
+            clase.horario.estado = 'disponible'
+        else:  # pendiente o realizada
+            clase.horario.estado = 'ocupado'
+        
         db.session.commit()
 
-        flash('Estado de la clase actualizado con éxito', 'success')
-    else:
-        flash('Clase no encontrada', 'danger')
+        if is_ajax:
+            return jsonify({
+                'success': True,
+                'message': f"Estado de la clase actualizado a {new_status} con éxito",
+                'horario_status': clase.horario.estado  # Opcional: enviar el nuevo estado del horario
+            }), 200
+
+        flash(f"Estado de la clase actualizado a {new_status} con éxito. Horario marcado como {clase.horario.estado}.", 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        
+        if is_ajax:
+            return jsonify({
+                'success': False,
+                'message': str(e)
+            }), 500
+
+        flash(str(e), 'danger')
 
     return redirect(url_for('main.clases'))
-
 
 @main_routes.route('/tasa', methods=['GET', 'POST'])
 @admin_required
