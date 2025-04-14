@@ -10,6 +10,7 @@ from functools import wraps
 
 # Inicializar la aplicación Flask
 app = Flask(__name__)
+application = app
 app.config.from_object(Config)
 
 # Inicializar la instancia de SQLAlchemy

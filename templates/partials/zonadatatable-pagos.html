@@ -41,7 +41,7 @@
                                     <p>El pago no tiene comprobante.</p>
                                 {% else %}
                                     <!-- Icono de imagen para abrir el modal -->
-                                    <i class="bx bx-image" style="font-size: 24px; cursor: pointer;" onclick="openModal('http://localhost:3000/uploads/comprobante/{{ pago.payment_proof }}')"></i>
+                                    <i class="bx bx-image" style="font-size: 24px; cursor: pointer;" onclick="openModal('https://backend.waikikipadel.com/uploads/comprobante/{{ pago.payment_proof }}')"></i>
                                 {% endif %}
                             </td>
                             <td>{{ pago.payment_status }}</td>
